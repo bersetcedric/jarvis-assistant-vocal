@@ -122,13 +122,13 @@ class Gestionnaire:
         if cfg.demo:
             avertir("Mode démo : aucune clé pour écrire le script, script gabarit utilisé.")
         if not cfg.images_ia:
-            avertir("Aucune clé d'images (OpenAI) : visuels abstraits utilisés.")
+            avertir("Aucune clé d'images : visuels abstraits utilisés.")
         if cfg.demo and demande.langue != "Français":
             avertir("Mode démo : le script gabarit reste en français, quelle que soit la langue choisie.")
         if demande.voix and not cfg.voix_disponible:
             avertir("Aucune voix configurée : vidéo muette avec sous-titres.")
-        clips = demande.moteur == "clips" and cfg.images_ia and demande.duree <= DUREE_MAX_CLIPS
-        if demande.moteur == "clips" and not cfg.images_ia:
+        clips = demande.moteur == "clips" and cfg.clips_ia and demande.duree <= DUREE_MAX_CLIPS
+        if demande.moteur == "clips" and not cfg.clips_ia:
             avertir("Clips IA indisponibles sans clé OpenAI : montage d'images utilisé.")
         elif demande.moteur == "clips" and not clips:
             avertir("Clips IA réservés aux vidéos de 5 minutes au plus : images animées utilisées.")

@@ -29,7 +29,9 @@ def _lire_env(chemin: Path) -> dict[str, str]:
 
 @dataclass(frozen=True)
 class Config:
-    cle_openai: str = ""  # images, clips IA, voix de repli
+    cle_openai: str = ""  # clips IA, voix de repli
+    cle_images: str = ""  # modele d'images (Agnes AI ou OpenAI)
+    url_images: str = URL_OPENAI
     cle_script: str = ""  # modele qui ecrit le scenario (Agnes AI, OpenAI ou compatible)
     url_script: str = URL_OPENAI
     cle_elevenlabs: str = ""
@@ -50,6 +52,10 @@ class Config:
 
     @property
     def images_ia(self) -> bool:
+        return bool(self.cle_images)
+
+    @property
+    def clips_ia(self) -> bool:
         return bool(self.cle_openai)
 
     @property
@@ -82,11 +88,13 @@ def charger(env: dict[str, str] | None = None) -> Config:
     return Config(
         cle_openai=lire("OPENAI_API_KEY"),
         cle_script=cle_script,
+        cle_images=cle_agnes or lire("OPENAI_API_KEY"),
+        url_images=URL_AGNES if cle_agnes else URL_OPENAI,
         url_script=url_script,
         cle_elevenlabs=lire("ELEVENLABS_API_KEY"),
         voix_elevenlabs=lire("ELEVENLABS_VOICE_ID"),
         modele_script=lire("STUDIO_MODELE_SCRIPT", "agnes-2.5-flash" if agnes else base.modele_script),
-        modele_image=lire("STUDIO_MODELE_IMAGE", base.modele_image),
+        modele_image=lire("STUDIO_MODELE_IMAGE", "agnes-image-2.5-flash" if cle_agnes else base.modele_image),
         modele_video=lire("STUDIO_MODELE_VIDEO", base.modele_video),
         modele_voix_openai=lire("STUDIO_MODELE_VOIX_OPENAI", base.modele_voix_openai),
         voix_openai=lire("STUDIO_VOIX_OPENAI", base.voix_openai),

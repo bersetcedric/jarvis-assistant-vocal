@@ -26,8 +26,8 @@ Copier `.env.example` en `.env` (ignoré par git) et renseigner :
 
 | Variable | Rôle |
 |---|---|
-| `AGNES_API_KEY` | écriture du script par Agnes AI (prioritaire pour le script) |
-| `OPENAI_API_KEY` | images, clips IA, voix de repli ; script si Agnes est absent |
+| `AGNES_API_KEY` | script et images par Agnes AI (prioritaire sur OpenAI) |
+| `OPENAI_API_KEY` | clips IA, voix de repli ; script et images si Agnes est absent |
 | `ELEVENLABS_API_KEY` | voix française (facultatif) |
 | `ELEVENLABS_VOICE_ID` | voix choisie ; vide = première voix du compte |
 

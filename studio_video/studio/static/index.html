@@ -307,7 +307,7 @@ async function initialiser() {
   $("demo").hidden = !etat.demo && etat.images;
   $("demo").textContent = etat.demo
     ? "Mode démo : aucune clé détectée. Script gabarit et visuels abstraits. Ajoute tes clés dans studio_video/.env."
-    : "Script écrit par l'IA. Sans clé d'images, les visuels restent abstraits : ajoute OPENAI_API_KEY dans studio_video/.env.";
+    : "Script écrit par l'IA. Sans clé d'images, les visuels restent abstraits : ajoute AGNES_API_KEY ou OPENAI_API_KEY dans studio_video/.env.";
   radios("formats", "ratio", ORDRE_FORMATS.filter((f) => etat.formats.includes(f)), (ratio) => {
     const [a, b] = ratio.split(":").map(Number), cote = 30 / Math.max(a, b), forme = el("i");
     forme.style.width = `${Math.round(a * cote)}px`; forme.style.height = `${Math.round(b * cote)}px`;

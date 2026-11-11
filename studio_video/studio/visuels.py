@@ -70,10 +70,10 @@ def image_openai(prompt: str, chemin: Path, cfg: Config, largeur: int, hauteur: 
     taille = "1024x1536" if largeur < hauteur else "1024x1024" if largeur == hauteur else "1536x1024"
     reponse = requete(
         "POST",
-        f"{OPENAI}/images/generations",
-        nom="OpenAI (image)",
+        f"{cfg.url_images}/images/generations",
+        nom="Modèle d'images",
         timeout=300.0,
-        headers={"Authorization": f"Bearer {cfg.cle_openai}"},
+        headers={"Authorization": f"Bearer {cfg.cle_images}"},
         json={"model": cfg.modele_image, "prompt": prompt[:3500], "size": taille, "n": 1},
     )
     try:
@@ -83,7 +83,7 @@ def image_openai(prompt: str, chemin: Path, cfg: Config, largeur: int, hauteur: 
     if donnee.get("b64_json"):
         brut = base64.b64decode(donnee["b64_json"])
     elif donnee.get("url"):
-        brut = requete("GET", donnee["url"], nom="OpenAI (image)").content
+        brut = requete("GET", donnee["url"], nom="Modèle d'images").content
     else:
         raise ErreurFournisseur("Le modèle d'image n'a rien renvoyé.")
     cadrer(Image.open(io.BytesIO(brut)), largeur, hauteur).save(chemin, "PNG")

@@ -30,7 +30,8 @@ def test_config_sans_cle_est_en_demo(tmp_path):
     assert cfg.demo and not cfg.voix_disponible
     assert not _cfg(tmp_path, OPENAI_API_KEY="factice").demo
     agnes = _cfg(tmp_path, AGNES_API_KEY="factice")
-    assert not agnes.demo and not agnes.images_ia
+    assert not agnes.demo and agnes.images_ia and not agnes.clips_ia
+    assert (agnes.url_images, agnes.modele_image) == ("https://apihub.agnes-ai.com/v1", "agnes-image-2.5-flash")
     assert (agnes.url_script, agnes.modele_script) == ("https://apihub.agnes-ai.com/v1", "agnes-2.5-flash")
     openai = _cfg(tmp_path, OPENAI_API_KEY="factice")
     assert openai.url_script == "https://api.openai.com/v1" and openai.images_ia

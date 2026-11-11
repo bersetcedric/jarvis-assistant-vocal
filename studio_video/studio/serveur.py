@@ -57,7 +57,7 @@ def creer_app(cfg: Config | None = None) -> FastAPI:
     @app.get("/api/etat")
     def etat():
         voix = "elevenlabs" if cfg.cle_elevenlabs else "openai" if cfg.cle_openai else "aucune"
-        return {"demo": cfg.demo, "images": cfg.images_ia, "clips": cfg.images_ia, "voix": voix, "styles": list(STYLES),
+        return {"demo": cfg.demo, "images": cfg.images_ia, "clips": cfg.clips_ia, "voix": voix, "styles": list(STYLES),
                 "langues": list(langues.LANGUES), "couleurs": COULEURS, "polices": list(FAMILLES),
                 "habillages": list(HABILLAGES),
                 "max_episodes": MAX_EPISODES, "formats": list(FORMATS), "resolutions": list(RESOLUTIONS),
