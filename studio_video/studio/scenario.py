@@ -6,8 +6,10 @@ import json
 import re
 from dataclasses import dataclass
 
+from . import langues
 from .config import Config
 from .http import ErreurFournisseur, requete
+from .sous_titres import Style
 
 MAX_EPISODES = 6
 MIN_SCENES, MAX_SCENES = 3, 8
@@ -21,13 +23,16 @@ STYLES = {
     "documentaire": "photo documentaire naturelle, lumiere du jour, cadrage sobre",
 }
 
-CONSIGNE = """Tu es scenariste de videos verticales courtes en francais (TikTok, Reels, Shorts).
+CONSIGNE = """Tu es scenariste de videos verticales courtes (TikTok, Reels, Shorts).
+Langue de la video : {langue}. Les champs "titre" et "narration" sont rediges dans cette langue,
+dans son ecriture d'origine, avec un ton naturel pour un locuteur natif.
 Tu reponds uniquement par un objet JSON de la forme :
-{"titre": str, "style_visuel": str, "episodes": [{"titre": str, "scenes": [{"narration": str, "visuel": str}]}]}
+{{"titre": str, "style_visuel": str, "episodes": [{{"titre": str, "scenes": [{{"narration": str, "visuel": str}}]}}]}}
 Regles :
 - La premiere scene de chaque episode ouvre sur une accroche forte.
-- "narration" : 15 a 28 mots dits par une voix off, en francais naturel, sans emoji ni hashtag.
-- "visuel" : description precise d'une seule image verticale, sans texte ni logo dans l'image.
+- "narration" : 15 a 28 mots dits par une voix off (ou la longueur equivalente dans une langue
+  sans espaces), sans emoji ni hashtag.
+- "visuel" : description precise, en francais, d'une seule image verticale, sans texte ni logo.
 - Les personnages recurrents sont decrits avec les memes traits a chaque scene.
 - "style_visuel" : une phrase qui fixe la direction artistique commune a toutes les images.
 - Pour une mini-serie : les episodes se suivent, chacun (sauf le dernier) finit sur un suspense."""
@@ -43,6 +48,8 @@ class Demande:
     moteur: str = "images"  # images | clips
     voix: bool = True
     image: bytes | None = None  # PNG de reference fournie par l'utilisateur
+    langue: str = "Français"
+    sous_titres: Style = Style()
 
     def valider(self) -> "Demande":
         idee = " ".join(self.idee.split())[:1500]
@@ -59,6 +66,8 @@ class Demande:
             moteur=self.moteur if self.moteur in ("images", "clips") else "images",
             voix=bool(self.voix),
             image=self.image,
+            langue=langues.normaliser(self.langue),
+            sous_titres=self.sous_titres.valider(),
         )
 
 
@@ -154,7 +163,7 @@ def generer_scenario(demande: Demande, cfg: Config, image_data_url: str | None =
             "model": cfg.modele_script,
             "response_format": {"type": "json_object"},
             "messages": [
-                {"role": "system", "content": CONSIGNE},
+                {"role": "system", "content": CONSIGNE.format(langue=demande.langue)},
                 {"role": "user", "content": contenu},
             ],
         },

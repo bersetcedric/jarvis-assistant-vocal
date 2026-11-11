@@ -34,6 +34,29 @@ Sans aucune clé, Bobine tourne en **mode démo** : script gabarit, visuels
 abstraits, vidéo muette sous-titrée. Cela suffit pour vérifier l'installation
 et le montage.
 
+## Langues
+
+Le champ « Langue de la vidéo » règle la narration, la voix et les sous-titres.
+Une liste d'environ 80 langues est proposée, et n'importe quelle autre peut
+être saisie librement : le script est alors écrit dans cette langue.
+
+- Chinois, japonais, thaï et autres écritures sans espaces sont découpés par
+  nombre de signes.
+- Arabe, persan, ourdou et hébreu sont affichés de droite à gauche.
+- La police est choisie automatiquement parmi celles du PC si celle demandée ne
+  contient pas l'écriture. Si aucune ne convient, un avertissement s'affiche.
+- Hindi, tamoul, thaï et écritures voisines demandent la bibliothèque FriBiDi
+  pour être parfaitement ligaturés ; sans elle, un avertissement s'affiche.
+- La qualité de la voix dépend du fournisseur : toutes les langues ne sont pas
+  prononcées aussi bien.
+- En mode démo, le script gabarit reste en français.
+
+## Sous-titres
+
+Trois réglages, avec aperçu dans le formulaire : la **couleur** (sept teintes
+ou une couleur libre), la **police** (classique, Impact, décontractée, serif,
+machine à écrire) et l'**habillage** (contour, bandeau plein, ombre portée).
+
 ## Moteurs vidéo
 
 - **Images animées** (par défaut) : une image générée par scène, animée par un
@@ -53,7 +76,8 @@ vidéo et 6 épisodes par série.
 | `studio/scenario.py` | écriture du scénario (ou gabarit en mode démo) |
 | `studio/visuels.py` | images, image fournie, clips IA |
 | `studio/voix.py` | voix off ElevenLabs ou OpenAI |
-| `studio/sous_titres.py` | découpage et rendu des sous-titres |
+| `studio/sous_titres.py` | découpage, polices et rendu des sous-titres |
+| `studio/langues.py` | langues proposées et codes pour la voix |
 | `studio/montage.py` | montage ffmpeg |
 | `studio/taches.py` | file d'attente, progression, stockage |
 | `studio/serveur.py` | API locale et interface (`studio/static/index.html`) |

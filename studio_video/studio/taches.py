@@ -12,7 +12,7 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from . import montage, sous_titres, visuels, voix
+from . import langues, montage, sous_titres, visuels, voix
 from .config import Config
 from .http import ErreurFournisseur
 from .scenario import Demande, generer_scenario
@@ -76,7 +76,9 @@ class Gestionnaire:
         (self.dossier / identifiant).mkdir(parents=True)
         projet = {
             "id": identifiant, "cree": time.time(), "idee": demande.idee, "format": demande.format,
-            "style": demande.style, "moteur": demande.moteur, "voix": demande.voix,
+            "style": demande.style, "moteur": demande.moteur, "voix": demande.voix, "langue": demande.langue,
+            "sous_titres": {"couleur": demande.sous_titres.couleur, "police": demande.sous_titres.police,
+                            "habillage": demande.sous_titres.habillage},
             "avec_image": demande.image is not None, "etat": "en_attente", "etape": "En file d'attente",
             "progression": 0, "titre": demande.idee[:80], "episodes": [], "avertissements": [], "erreur": "",
         }
@@ -115,6 +117,8 @@ class Gestionnaire:
 
         if cfg.demo:
             avertir("Mode démo : aucune clé OpenAI, script gabarit et visuels abstraits.")
+        if cfg.demo and demande.langue != "Français":
+            avertir("Mode démo : le script gabarit reste en français, quelle que soit la langue choisie.")
         if demande.voix and not cfg.voix_disponible:
             avertir("Aucune voix configurée : vidéo muette avec sous-titres.")
         clips = demande.moteur == "clips" and not cfg.demo
@@ -153,7 +157,7 @@ class Gestionnaire:
                                          "Image verticale, sans texte ni logo.", image, cfg)
 
                 audio = base.with_suffix(".mp3")
-                if not (demande.voix and voix.synthetiser(scene["narration"], audio, cfg)):
+                if not (demande.voix and voix.synthetiser(scene["narration"], audio, cfg, langues.code_voix(demande.langue))):
                     audio = None
                 parle = montage.duree_media(audio) if audio else montage.duree_estimee(scene["narration"])
                 duree = max(2.5, parle + 0.35)
@@ -168,11 +172,17 @@ class Gestionnaire:
                         clip = None
                         avertir(f"Clip IA indisponible pour une scene, image utilisée à la place. ({exc})")
 
+                if not sous_titres.choisir_police(scene["narration"], demande.sous_titres.police)[1]:
+                    avertir("Aucune police installée ne contient cette écriture : les sous-titres "
+                            "peuvent afficher des carrés vides.")
+                if sous_titres.rendu_approximatif(scene["narration"]):
+                    avertir("Écriture complexe (ex. hindi, tamoul, thaï) : sans la bibliothèque FriBiDi, "
+                            "les sous-titres peuvent être mal ligaturés.")
                 bandeaux = []
                 for k, (texte, debut, fin) in enumerate(
                         sous_titres.minuter(sous_titres.decouper(scene["narration"]), parle)):
                     png = base.with_name(f"{base.name}_st{k:02d}.png")
-                    sous_titres.rendre(texte, png)
+                    sous_titres.rendre(texte, png, demande.sous_titres)
                     bandeaux.append((png, debut, fin))
 
                 sequence = base.with_name(base.name + "_seq.mp4")

@@ -10,8 +10,10 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
+from . import langues
 from .config import Config, charger
 from .scenario import MAX_EPISODES, MAX_SCENES, MIN_SCENES, STYLES, Demande
+from .sous_titres import COULEURS, FAMILLES, HABILLAGES, Style
 from .taches import ID_VALIDE, Gestionnaire
 from .visuels import image_utilisateur
 
@@ -27,6 +29,10 @@ class NouveauProjet(BaseModel):
     moteur: str = "images"
     voix: bool = True
     image: str | None = Field(default=None, max_length=12_000_000)
+    langue: str = Field(default="Français", max_length=60)
+    st_couleur: str = Field(default="#FFFFFF", max_length=20)
+    st_police: str = Field(default="classique", max_length=20)
+    st_habillage: str = Field(default="contour", max_length=20)
 
 
 def creer_app(cfg: Config | None = None) -> FastAPI:
@@ -47,6 +53,8 @@ def creer_app(cfg: Config | None = None) -> FastAPI:
     def etat():
         voix = "elevenlabs" if cfg.cle_elevenlabs else "openai" if cfg.cle_openai else "aucune"
         return {"demo": cfg.demo, "clips": not cfg.demo, "voix": voix, "styles": list(STYLES),
+                "langues": list(langues.LANGUES), "couleurs": COULEURS, "polices": list(FAMILLES),
+                "habillages": list(HABILLAGES),
                 "max_episodes": MAX_EPISODES, "min_scenes": MIN_SCENES, "max_scenes": MAX_SCENES}
 
     @app.get("/api/projets")
@@ -59,7 +67,8 @@ def creer_app(cfg: Config | None = None) -> FastAPI:
             image = image_utilisateur(corps.image) if corps.image else None
             return gestionnaire.creer(Demande(
                 idee=corps.idee, format=corps.format, episodes=corps.episodes, scenes=corps.scenes,
-                style=corps.style, moteur=corps.moteur, voix=corps.voix, image=image))
+                style=corps.style, moteur=corps.moteur, voix=corps.voix, image=image, langue=corps.langue,
+                sous_titres=Style(corps.st_couleur, corps.st_police, corps.st_habillage)))
         except ValueError as exc:
             raise HTTPException(422, str(exc)) from None
 

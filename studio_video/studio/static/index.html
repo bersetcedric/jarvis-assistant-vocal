@@ -70,6 +70,18 @@
   summary { cursor: pointer; color: var(--doux); }
   details ol { padding-left: 20px; margin: 8px 0; }
   details li { margin-bottom: 6px; }
+  input[type="text"] { width: 100%; background: var(--fond); color: var(--texte); border: 1px solid var(--trait);
+                       border-radius: 10px; padding: 12px; font: inherit; }
+  input[type="text"]:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .sous-legende { font-size: 13px; color: var(--doux); margin: 12px 0 6px; }
+  .pastilles span { display: flex; align-items: center; gap: 8px; }
+  .pastilles i { width: 16px; height: 16px; border-radius: 50%; border: 1px solid #0008; display: inline-block; }
+  .pastilles input[type="color"] { width: 44px; height: 38px; padding: 2px; border-radius: 10px;
+                                   border: 1px solid var(--trait); background: var(--fond); cursor: pointer; }
+  .apercu-st { margin-top: 14px; height: 120px; border-radius: 12px; display: grid; place-items: center;
+               background: linear-gradient(135deg, #2c3e66, #7a4b3a 60%, #c98a4b); overflow: hidden; }
+  .apercu-st span { font-size: 30px; font-weight: 800; text-transform: uppercase; padding: 6px 16px;
+                    border-radius: 10px; text-align: center; }
   @media (min-width: 860px) {
     .grille { display: grid; grid-template-columns: 420px 1fr; gap: 28px; align-items: start; }
     h3 { margin-top: 0; }
@@ -114,6 +126,11 @@
         </div>
         <p class="aide">Elle devient la première scène et inspire le script.</p>
 
+        <label class="titre" for="langue">Langue de la vidéo</label>
+        <input type="text" id="langue" list="langues" value="Français" maxlength="40" autocomplete="off">
+        <datalist id="langues"></datalist>
+        <p class="aide">Narration, voix et sous-titres. Choisis dans la liste ou écris n'importe quelle langue.</p>
+
         <fieldset>
           <legend>Style visuel</legend>
           <div class="choix" id="styles"></div>
@@ -148,6 +165,19 @@
           </div>
         </fieldset>
 
+        <fieldset>
+          <legend>Sous-titres</legend>
+          <p class="sous-legende" id="lg-couleur">Couleur</p>
+          <div class="choix pastilles" id="couleurs" role="group" aria-labelledby="lg-couleur"></div>
+          <p class="sous-legende" id="lg-police">Police</p>
+          <div class="choix" id="polices" role="group" aria-labelledby="lg-police"></div>
+          <p class="sous-legende" id="lg-habillage">Habillage</p>
+          <div class="choix" id="habillages" role="group" aria-labelledby="lg-habillage"></div>
+          <div class="apercu-st" aria-label="Aperçu du style de sous-titres"><span id="apercu-st">Ton sous-titre</span></div>
+          <p class="aide">Aperçu indicatif. Si la police choisie ne contient pas l'écriture de la langue,
+            Bobine en utilise une autre installée sur ton PC.</p>
+        </fieldset>
+
         <button class="principal" id="envoyer">Créer ma vidéo</button>
         <p class="message" id="message" role="alert"></p>
       </form>
@@ -164,7 +194,39 @@
 const $ = (id) => document.getElementById(id);
 const NOMS_STYLES = { cinematique: "Cinématique", anime: "Anime", aquarelle: "Aquarelle", "3d": "3D animée",
                       sombre: "Sombre", documentaire: "Documentaire" };
+const NOMS_POLICES = { classique: "Classique", impact: "Impact", decontracte: "Décontractée", serif: "Serif",
+                       machine: "Machine à écrire" };
+const CSS_POLICES = { classique: "Arial, Helvetica, sans-serif", impact: 'Impact, "Arial Narrow", sans-serif',
+                      decontracte: '"Comic Sans MS", "Comic Sans", cursive', serif: "Georgia, serif",
+                      machine: '"Courier New", monospace' };
+const NOMS_COULEURS = { blanc: "Blanc", jaune: "Jaune", vert: "Vert néon", cyan: "Cyan", rose: "Rose",
+                        orange: "Orange", rouge: "Rouge" };
+const NOMS_HABILLAGES = { contour: "Contour", bandeau: "Bandeau plein", ombre: "Ombre portée" };
 let image = null, minuterie = null, signature = "";
+
+function choisi(nom) { return document.querySelector(`input[name="${nom}"]:checked`).value; }
+function couleurSousTitres() { return choisi("st_couleur") === "perso" ? $("couleur-perso").value : choisi("st_couleur"); }
+function contraste(hex) {
+  const [r, v, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  return 0.299 * r + 0.587 * v + 0.114 * b > 110 ? "#000" : "#fff";
+}
+function majApercu() {
+  const zone = $("apercu-st"), couleur = couleurSousTitres(), bord = contraste(couleur), habillage = choisi("st_habillage");
+  zone.style.fontFamily = CSS_POLICES[choisi("st_police")];
+  zone.style.background = habillage === "bandeau" ? couleur : "none";
+  zone.style.color = habillage === "bandeau" ? bord : couleur;
+  zone.style.textShadow = habillage === "contour"
+    ? [[-2, -2], [2, -2], [-2, 2], [2, 2], [0, 3], [3, 0], [0, -3], [-3, 0]].map(([x, y]) => `${x}px ${y}px 0 ${bord}`).join(",")
+    : habillage === "ombre" ? "4px 4px 0 #000c" : "none";
+}
+function radios(zone, nom, valeurs, libelle, decor) {
+  valeurs.forEach((valeur, i) => {
+    const entree = el("input", { type: "radio", name: nom, value: valeur });
+    entree.checked = i === 0;
+    const texte = el("span", {}, ...(decor ? [decor(valeur)] : []), libelle(valeur));
+    $(zone).append(el("label", {}, entree, texte));
+  });
+}
 
 function el(balise, attributs = {}, ...enfants) {
   const noeud = document.createElement(balise);
@@ -203,6 +265,18 @@ async function initialiser() {
     entree.checked = i === 0;
     $("styles").append(el("label", {}, entree, el("span", { texte: NOMS_STYLES[style] || style })));
   });
+  etat.langues.forEach((langue) => $("langues").append(el("option", { value: langue })));
+  radios("couleurs", "st_couleur", Object.values(etat.couleurs),
+    (hex) => NOMS_COULEURS[Object.keys(etat.couleurs).find((nom) => etat.couleurs[nom] === hex)] || hex,
+    (hex) => { const pastille = el("i"); pastille.style.background = hex; return pastille; });
+  const perso = el("input", { type: "radio", name: "st_couleur", value: "perso" });
+  const palette = el("input", { type: "color", id: "couleur-perso", value: "#b388ff", "aria-label": "Couleur personnalisée" });
+  palette.addEventListener("input", () => { perso.checked = true; majApercu(); });
+  $("couleurs").append(el("label", {}, perso, el("span", { texte: "Autre" })), palette);
+  radios("polices", "st_police", etat.polices, (nom) => NOMS_POLICES[nom] || nom);
+  radios("habillages", "st_habillage", etat.habillages, (nom) => NOMS_HABILLAGES[nom] || nom);
+  document.querySelectorAll('input[name^="st_"]').forEach((entree) => entree.addEventListener("change", majApercu));
+  majApercu();
   options($("scenes"), etat.min_scenes, etat.max_scenes, 5);
   options($("episodes"), 2, etat.max_episodes, 3);
   rafraichir();
@@ -241,7 +315,8 @@ $("formulaire").addEventListener("submit", async (evenement) => {
       body: JSON.stringify({
         idee: $("idee").value, format: valeur("format"), episodes: Number($("episodes").value),
         scenes: Number($("scenes").value), style: valeur("style"), moteur: valeur("moteur"),
-        voix: valeur("voix") === "oui", image,
+        voix: valeur("voix") === "oui", image, langue: $("langue").value,
+        st_couleur: couleurSousTitres(), st_police: valeur("st_police"), st_habillage: valeur("st_habillage"),
       }),
     });
     $("idee").value = "";
@@ -261,7 +336,8 @@ function carteProjet(projet) {
   const carte = el("article", { classe: "carte projet" });
   const tete = el("div", { classe: "projet-tete" },
     el("div", {}, el("h4", { texte: projet.titre }),
-      el("p", { classe: "meta", texte: `${nature} · ${NOMS_STYLES[projet.style] || projet.style} · ${moteur}` })));
+      el("p", { classe: "meta", texte: [nature, projet.langue, NOMS_STYLES[projet.style] || projet.style, moteur]
+                                        .filter(Boolean).join(" · ") })));
   if (!actif) {
     const bouton = el("button", { type: "button", texte: "Supprimer", "aria-label": `Supprimer ${projet.titre}` });
     bouton.addEventListener("click", async () => {

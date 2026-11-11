@@ -7,7 +7,7 @@ import time
 import pytest
 from PIL import Image
 
-from studio import montage, sous_titres
+from studio import langues, montage, sous_titres
 from studio.config import charger
 from studio.scenario import Demande, generer_scenario, normaliser
 from studio.visuels import image_utilisateur
@@ -116,3 +116,68 @@ def test_generation_demo_de_bout_en_bout(tmp_path):
     assert all(e["duree"] > 7 for e in projet["episodes"])
     assert client.delete(f"/api/projets/{projet['id']}").json() == {"supprime": True}
     assert not (tmp_path / "projets" / projet["id"]).exists()
+
+
+def test_langue_normalisee_et_code_vocal():
+    assert langues.normaliser("  english ") == "English"
+    assert langues.normaliser("") == "Français"
+    assert langues.normaliser("Occitan <script>{x}") == "Occitan scriptx"
+    assert langues.code_voix("日本語") == "ja"
+    assert langues.code_voix("Kiswahili") is None and langues.code_voix("Occitan") is None
+    assert Demande(idee="une idee", langue="DEUTSCH").valider().langue == "Deutsch"
+
+
+def test_style_de_sous_titres_valide():
+    style = sous_titres.Style("jaune", "impact", "bandeau").valider()
+    assert (style.couleur, style.police, style.habillage) == ("#FFE600", "impact", "bandeau")
+    assert sous_titres.Style("#12ab9f", "x", "y").valider() == sous_titres.Style("#12AB9F", "classique", "contour")
+    assert sous_titres.Style("red; drop", "serif", "ombre").valider().couleur == "#FFFFFF"
+
+
+def test_decoupage_des_ecritures_sans_espaces():
+    segments = sous_titres.decouper("这是一个关于未来城市的故事每个人都在寻找答案")
+    assert len(segments) == 3 and all(len(s) <= 9 for s in segments)
+    assert sous_titres.ecriture("مرحبا بالعالم") == "arabe"
+    assert sous_titres.ecriture("नमस्ते") == "indienne" and sous_titres.ecriture("Привет") == "autre"
+    assert montage.duree_estimee("这是一个关于未来城市的故事每个人都在寻找答案这是一个关于未来城市的故事") > 5
+
+
+def test_arabe_remis_en_ordre_visuel_sans_libraqm():
+    brut = "مرحبا بالعالم"
+    assert sous_titres.preparer(brut, moteur_complet=True) == brut
+    visuel = sous_titres.preparer(brut, moteur_complet=False)
+    assert visuel != brut and len(visuel.split()) == 2
+    assert sous_titres.preparer("Bonjour", moteur_complet=False) == "Bonjour"
+
+
+def test_rendu_des_styles_et_repli_de_police(tmp_path):
+    from PIL import Image
+
+    images = {}
+    for habillage in sous_titres.HABILLAGES:
+        chemin = tmp_path / f"{habillage}.png"
+        sous_titres.rendre("Привет мир", chemin, sous_titres.Style("rose", "serif", habillage))
+        images[habillage] = Image.open(chemin).convert("RGBA")
+        assert images[habillage].size == (1080, 420) and images[habillage].getbbox() is not None
+    boite = images["bandeau"].getbbox()
+    assert images["bandeau"].getpixel((boite[0] + 40, 210)) == (255, 79, 163, 255)
+    assert len({bytes(i.tobytes()) for i in images.values()}) == 3
+    chemin, couvert = sous_titres.choisir_police("Привет", "serif")
+    if chemin is not None:  # une police systeme existe : elle couvre le cyrillique, pas un signe prive
+        assert couvert and sous_titres._couvre(chemin, "Пр")
+        assert not sous_titres._couvre(chemin, "\U000f0000")
+
+
+def test_api_transmet_langue_et_style(tmp_path):
+    from fastapi.testclient import TestClient
+
+    from studio.serveur import creer_app
+
+    client = TestClient(creer_app(_cfg(tmp_path)))
+    etat = client.get("/api/etat").json()
+    assert "日本語" in etat["langues"] and "impact" in etat["polices"] and etat["couleurs"]["jaune"] == "#FFE600"
+    projet = client.post("/api/projets", json={"idee": "Un test de style", "langue": "español", "scenes": 3,
+                                               "st_couleur": "#39ff14", "st_police": "machine",
+                                               "st_habillage": "ombre"}).json()
+    assert projet["langue"] == "Español"
+    assert projet["sous_titres"] == {"couleur": "#39FF14", "police": "machine", "habillage": "ombre"}

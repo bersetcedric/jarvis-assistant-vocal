@@ -48,8 +48,10 @@ def duree_media(chemin: Path) -> float:
 
 
 def duree_estimee(narration: str) -> float:
-    """Duree de lecture quand il n'y a pas de voix (environ 2,6 mots par seconde)."""
-    return max(2.5, len(narration.split()) / 2.6)
+    """Duree de lecture sans voix : environ 2,6 mots par seconde, ou 5 signes par
+    seconde pour les ecritures sans espaces (chinois, japonais, thai...)."""
+    signes = len(narration.replace(" ", ""))
+    return max(2.5, len(narration.split()) / 2.6, signes / 5 if signes > 12 * len(narration.split()) else 0)
 
 
 def rendre_scene(sortie: Path, *, duree: float, image: Path | None = None, clip: Path | None = None,
