@@ -1,0 +1,18 @@
+[project]
+name = "bobine-studio"
+version = "0.1.0"
+description = "Bobine : studio local de videos verticales generees par IA (video unique ou mini-serie)."
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.110",
+    "httpx>=0.27",
+    "imageio-ffmpeg>=0.5",
+    "pillow>=10.1",
+    "uvicorn>=0.30",
+]
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
