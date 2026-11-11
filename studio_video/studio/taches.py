@@ -120,13 +120,15 @@ class Gestionnaire:
                 self._maj(identifiant, avertissements=list(avertissements))
 
         if cfg.demo:
-            avertir("Mode démo : aucune clé OpenAI, script gabarit et visuels abstraits.")
+            avertir("Mode démo : aucune clé pour écrire le script, script gabarit utilisé.")
+        if not cfg.images_ia:
+            avertir("Aucune clé d'images (OpenAI) : visuels abstraits utilisés.")
         if cfg.demo and demande.langue != "Français":
             avertir("Mode démo : le script gabarit reste en français, quelle que soit la langue choisie.")
         if demande.voix and not cfg.voix_disponible:
             avertir("Aucune voix configurée : vidéo muette avec sous-titres.")
-        clips = demande.moteur == "clips" and not cfg.demo and demande.duree <= DUREE_MAX_CLIPS
-        if demande.moteur == "clips" and cfg.demo:
+        clips = demande.moteur == "clips" and cfg.images_ia and demande.duree <= DUREE_MAX_CLIPS
+        if demande.moteur == "clips" and not cfg.images_ia:
             avertir("Clips IA indisponibles sans clé OpenAI : montage d'images utilisé.")
         elif demande.moteur == "clips" and not clips:
             avertir("Clips IA réservés aux vidéos de 5 minutes au plus : images animées utilisées.")
@@ -164,7 +166,7 @@ class Gestionnaire:
 
                 if demande.image is not None and numero == 1 and indice == 1:
                     visuels.cadrer(Image.open(io.BytesIO(demande.image)), *travail).save(image, "PNG")
-                elif cfg.demo:
+                elif not cfg.images_ia:
                     visuels.image_demo(scene["visuel"], indice, image, *travail)
                 else:
                     try:

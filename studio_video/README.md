@@ -26,9 +26,14 @@ Copier `.env.example` en `.env` (ignoré par git) et renseigner :
 
 | Variable | Rôle |
 |---|---|
-| `OPENAI_API_KEY` | script, images, clips IA, voix de repli |
+| `AGNES_API_KEY` | écriture du script par Agnes AI (prioritaire pour le script) |
+| `OPENAI_API_KEY` | images, clips IA, voix de repli ; script si Agnes est absent |
 | `ELEVENLABS_API_KEY` | voix française (facultatif) |
 | `ELEVENLABS_VOICE_ID` | voix choisie ; vide = première voix du compte |
+
+Le script peut passer par toute API au format OpenAI : `STUDIO_SCRIPT_URL`,
+`STUDIO_SCRIPT_CLE` et `STUDIO_MODELE_SCRIPT`. Avec une clé de script mais sans
+clé d'images, le script est écrit par l'IA et les visuels restent abstraits.
 
 Sans aucune clé, Bobine tourne en **mode démo** : script gabarit, visuels
 abstraits, vidéo muette sous-titrée. Cela suffit pour vérifier l'installation

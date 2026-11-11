@@ -211,17 +211,21 @@ def _extraire_json(texte: str) -> dict:
 
 
 def _appel(cfg: Config, consigne: str, contenu: list[dict]) -> dict:
-    reponse = requete(
-        "POST",
-        "https://api.openai.com/v1/chat/completions",
-        nom="OpenAI (script)",
-        headers={"Authorization": f"Bearer {cfg.cle_openai}"},
-        json={
-            "model": cfg.modele_script,
-            "response_format": {"type": "json_object"},
-            "messages": [{"role": "system", "content": consigne}, {"role": "user", "content": contenu}],
-        },
-    )
+    corps = {
+        "model": cfg.modele_script,
+        "response_format": {"type": "json_object"},
+        "messages": [{"role": "system", "content": consigne}, {"role": "user", "content": contenu}],
+    }
+    appel = {"nom": "Modèle de script", "headers": {"Authorization": f"Bearer {cfg.cle_script}"}}
+    url = f"{cfg.url_script}/chat/completions"
+    try:
+        reponse = requete("POST", url, json=corps, **appel)
+    except ErreurFournisseur as exc:
+        if " 400 " not in str(exc) and " 422 " not in str(exc):
+            raise
+        # Certaines API compatibles refusent le mode JSON force : la consigne suffit alors.
+        del corps["response_format"]
+        reponse = requete("POST", url, json=corps, **appel)
     try:
         message = reponse.json()["choices"][0]["message"]["content"]
     except (KeyError, IndexError, TypeError, ValueError):

@@ -29,6 +29,12 @@ def test_config_sans_cle_est_en_demo(tmp_path):
     cfg = _cfg(tmp_path)
     assert cfg.demo and not cfg.voix_disponible
     assert not _cfg(tmp_path, OPENAI_API_KEY="factice").demo
+    agnes = _cfg(tmp_path, AGNES_API_KEY="factice")
+    assert not agnes.demo and not agnes.images_ia
+    assert (agnes.url_script, agnes.modele_script) == ("https://apihub.agnes-ai.com/v1", "agnes-2.5-flash")
+    openai = _cfg(tmp_path, OPENAI_API_KEY="factice")
+    assert openai.url_script == "https://api.openai.com/v1" and openai.images_ia
+    assert _cfg(tmp_path, STUDIO_SCRIPT_CLE="x", STUDIO_SCRIPT_URL="http://local").url_script.startswith("https://")
 
 
 def test_demande_bornee():
@@ -239,3 +245,26 @@ def test_requete_retente_les_pannes_passageres(monkeypatch):
     monkeypatch.setattr(httpx, "request", lambda *a, **k: httpx.Response(401, json={"error": {"message": "cle"}}))
     with pytest.raises(http.ErreurFournisseur, match="401"):
         http.requete("GET", "https://exemple.invalid", nom="Test")
+
+
+def test_script_sans_mode_json_force(tmp_path, monkeypatch):
+    import httpx
+
+    from studio import http
+
+    corps_recus = []
+
+    def fausse_requete(methode, url, **kwargs):
+        corps_recus.append((url, kwargs["json"], kwargs["headers"]["Authorization"]))
+        if "response_format" in kwargs["json"]:
+            return httpx.Response(400, json={"error": {"message": "response_format non pris en charge"}})
+        texte = 'Voici : {"titre": "T", "episodes": [{"scenes": [{"narration": "Bonjour", "visuel": "v"}]}]}'
+        return httpx.Response(200, json={"choices": [{"message": {"content": texte}}]})
+
+    monkeypatch.setattr(httpx, "request", fausse_requete)
+    monkeypatch.setattr(http, "PAUSES", (0, 0, 0))
+    scenario = generer_scenario(Demande(idee="une idee", duree=15).valider(), _cfg(tmp_path, AGNES_API_KEY="cle-agnes"))
+    assert scenario["episodes"][0]["scenes"][0]["narration"] == "Bonjour"
+    assert len(corps_recus) == 2 and "response_format" not in corps_recus[1][1]
+    assert corps_recus[0][0] == "https://apihub.agnes-ai.com/v1/chat/completions"
+    assert corps_recus[0][2] == "Bearer cle-agnes" and corps_recus[0][1]["model"] == "agnes-2.5-flash"

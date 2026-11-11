@@ -114,8 +114,7 @@
       <h2>Une idée, <em>une vidéo prête à publier.</em></h2>
       <p class="intro">Trois choix suffisent : ton idée, où tu publies, la durée. Bobine s'occupe du script,
         des images, de la voix, des sous-titres et du montage.</p>
-      <div id="demo" class="bandeau" hidden>Mode démo : aucune clé OpenAI détectée. Les vidéos utilisent un
-        script gabarit et des visuels abstraits. Ajoute tes clés dans <code>studio_video/.env</code>.</div>
+      <div id="demo" class="bandeau" hidden></div>
 
       <form id="formulaire" class="carte">
         <label class="etape" for="idee"><b>1</b>Ton idée</label>
@@ -288,9 +287,9 @@ function majResume() {
   $("bloc-episodes").hidden = !serie;
   $("envoyer").textContent = serie ? "Créer ma mini-série" : "Créer ma vidéo";
   let texte = serie ? `${episodes} épisodes d'environ ${nomDuree(duree)} : ` : "";
-  texte += `environ ${scenes} scènes` + (etat.demo ? "." : `, soit ${scenes} images et ${scenes} voix à générer.`);
+  texte += `environ ${scenes} scènes` + (etat.images ? `, soit ${scenes} images et ${scenes} voix à générer.` : ".");
   const longue = duree * episodes >= 600;
-  if (longue) texte += " Vidéo longue : la génération peut durer plus d'une heure" + (etat.demo ? "." : " et coûte cher en crédits API.");
+  if (longue) texte += " Vidéo longue : la génération peut durer plus d'une heure" + (etat.images ? " et coûte cher en crédits API." : ".");
   $("estimation").textContent = texte;
   $("estimation").className = longue ? "aide fort" : "aide";
   const clipsPossibles = etat.clips && duree <= etat.duree_max_clips;
@@ -305,7 +304,10 @@ function majResume() {
 
 async function initialiser() {
   etat = await api("/api/etat");
-  $("demo").hidden = !etat.demo;
+  $("demo").hidden = !etat.demo && etat.images;
+  $("demo").textContent = etat.demo
+    ? "Mode démo : aucune clé détectée. Script gabarit et visuels abstraits. Ajoute tes clés dans studio_video/.env."
+    : "Script écrit par l'IA. Sans clé d'images, les visuels restent abstraits : ajoute OPENAI_API_KEY dans studio_video/.env.";
   radios("formats", "ratio", ORDRE_FORMATS.filter((f) => etat.formats.includes(f)), (ratio) => {
     const [a, b] = ratio.split(":").map(Number), cote = 30 / Math.max(a, b), forme = el("i");
     forme.style.width = `${Math.round(a * cote)}px`; forme.style.height = `${Math.round(b * cote)}px`;
