@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import io
 import json
 import re
 import shutil
@@ -12,10 +13,12 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
+from PIL import Image
+
 from . import langues, montage, sous_titres, visuels, voix
 from .config import Config
 from .http import ErreurFournisseur
-from .scenario import Demande, generer_scenario
+from .scenario import DUREE_MAX_CLIPS, Demande, dimensions, generer_scenario
 
 ID_VALIDE = re.compile(r"^[0-9a-f]{12}$")
 
@@ -77,6 +80,7 @@ class Gestionnaire:
         projet = {
             "id": identifiant, "cree": time.time(), "idee": demande.idee, "format": demande.format,
             "style": demande.style, "moteur": demande.moteur, "voix": demande.voix, "langue": demande.langue,
+            "ratio": demande.ratio, "resolution": demande.resolution, "duree_visee": demande.duree,
             "sous_titres": {"couleur": demande.sous_titres.couleur, "police": demande.sous_titres.police,
                             "habillage": demande.sous_titres.habillage},
             "avec_image": demande.image is not None, "etat": "en_attente", "etape": "En file d'attente",
@@ -121,16 +125,25 @@ class Gestionnaire:
             avertir("Mode démo : le script gabarit reste en français, quelle que soit la langue choisie.")
         if demande.voix and not cfg.voix_disponible:
             avertir("Aucune voix configurée : vidéo muette avec sous-titres.")
-        clips = demande.moteur == "clips" and not cfg.demo
+        clips = demande.moteur == "clips" and not cfg.demo and demande.duree <= DUREE_MAX_CLIPS
         if demande.moteur == "clips" and cfg.demo:
             avertir("Clips IA indisponibles sans clé OpenAI : montage d'images utilisé.")
+        elif demande.moteur == "clips" and not clips:
+            avertir("Clips IA réservés aux vidéos de 5 minutes au plus : images animées utilisées.")
+        largeur, hauteur = dimensions(demande.ratio, demande.resolution)
+        # Les visuels sont prepares a 1080 px au plus : ffmpeg les agrandit pour le 1440p et le 4K.
+        travail = dimensions(demande.ratio, demande.resolution if largeur * hauteur <= 1080 * 1920 else "1080p")
+        geo = sous_titres.geometrie(largeur, hauteur)
 
         self._maj(identifiant, etat="en_cours", etape="Écriture du scénario", progression=2)
         data_url = None
         if demande.image is not None:
             (dossier / "reference.png").write_bytes(demande.image)
             data_url = "data:image/png;base64," + base64.b64encode(demande.image).decode()
-        scenario = generer_scenario(demande, cfg, data_url)
+        def suivi_script(fait: int, total: int) -> None:
+            self._maj(identifiant, etape=f"Écriture du scénario, chapitre {fait} sur {total}")
+
+        scenario = generer_scenario(demande, cfg, data_url, suivi_script)
         episodes = [{**e, "pret": False} for e in scenario["episodes"]]
         self._maj(identifiant, titre=scenario["titre"], style_visuel=scenario["style_visuel"], episodes=episodes)
 
@@ -140,6 +153,7 @@ class Gestionnaire:
         def avancer(etape: str) -> None:
             self._maj(identifiant, etape=etape, progression=min(99, 5 + round(94 * fait / total)))
 
+        dernier_visuel: Path | None = None
         for episode in episodes:
             numero, sequences = episode["numero"], []
             for indice, scene in enumerate(episode["scenes"], start=1):
@@ -149,12 +163,20 @@ class Gestionnaire:
                 image, clip = base.with_suffix(".png"), None
 
                 if demande.image is not None and numero == 1 and indice == 1:
-                    image.write_bytes(demande.image)
+                    visuels.cadrer(Image.open(io.BytesIO(demande.image)), *travail).save(image, "PNG")
                 elif cfg.demo:
-                    visuels.image_demo(scene["visuel"], indice, image)
+                    visuels.image_demo(scene["visuel"], indice, image, *travail)
                 else:
-                    visuels.image_openai(f"{scenario['style_visuel']}. {scene['visuel']}. "
-                                         "Image verticale, sans texte ni logo.", image, cfg)
+                    try:
+                        visuels.image_openai(f"{scenario['style_visuel']}. {scene['visuel']}. "
+                                             f"Image {demande.orientation}, sans texte ni logo.", image, cfg, *travail)
+                    except ErreurFournisseur as exc:
+                        if dernier_visuel is None:
+                            raise
+                        shutil.copyfile(dernier_visuel, image)
+                        avertir(f"Une image n'a pas pu être générée : l'image précédente est réutilisée. ({exc})")
+                dernier_visuel = dossier / "dernier_visuel.png"
+                shutil.copyfile(image, dernier_visuel)
 
                 audio = base.with_suffix(".mp3")
                 if not (demande.voix and voix.synthetiser(scene["narration"], audio, cfg, langues.code_voix(demande.langue))):
@@ -167,7 +189,7 @@ class Gestionnaire:
                         clip = base.with_name(base.name + "_clip.mp4")
                         visuels.clip_openai(f"{scenario['style_visuel']}. {scene['visuel']}. "
                                             "Mouvement de camera lent et fluide.", clip, cfg, image,
-                                            4 if duree <= 5 else 8)
+                                            4 if duree <= 5 else 8, paysage=largeur > hauteur)
                     except ErreurFournisseur as exc:
                         clip = None
                         avertir(f"Clip IA indisponible pour une scene, image utilisée à la place. ({exc})")
@@ -180,15 +202,19 @@ class Gestionnaire:
                             "les sous-titres peuvent être mal ligaturés.")
                 bandeaux = []
                 for k, (texte, debut, fin) in enumerate(
-                        sous_titres.minuter(sous_titres.decouper(scene["narration"]), parle)):
+                        sous_titres.minuter(sous_titres.decouper(scene["narration"], geo.mots_max, geo.lettres_max), parle)):
                     png = base.with_name(f"{base.name}_st{k:02d}.png")
-                    sous_titres.rendre(texte, png, demande.sous_titres)
+                    sous_titres.rendre(texte, png, demande.sous_titres, geo)
                     bandeaux.append((png, debut, fin))
 
                 sequence = base.with_name(base.name + "_seq.mp4")
                 montage.rendre_scene(sequence, duree=duree, image=image, clip=clip, audio=audio,
-                                     sous_titres=bandeaux, zoom_avant=indice % 2 == 1)
+                                     sous_titres=bandeaux, zoom_avant=indice % 2 == 1,
+                                     largeur=largeur, hauteur=hauteur, y_sous_titres=geo.y)
                 sequences.append(sequence)
+                for fichier in dossier.glob(f"{base.name}*"):  # libere le disque au fil de l'eau
+                    if fichier != sequence:
+                        fichier.unlink(missing_ok=True)
                 fait += 1
 
             avancer(f"Assemblage de l'épisode {numero}" if len(episodes) > 1 else "Assemblage final")
@@ -200,4 +226,5 @@ class Gestionnaire:
             for fichier in dossier.glob(f"e{numero:02d}_s*"):
                 fichier.unlink(missing_ok=True)
 
+        (dossier / "dernier_visuel.png").unlink(missing_ok=True)
         self._maj(identifiant, etat="termine", etape="Terminé", progression=100)

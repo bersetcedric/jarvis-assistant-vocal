@@ -13,7 +13,6 @@ from .config import Config
 from .http import ErreurFournisseur, requete
 from .sous_titres import police
 
-LARGEUR, HAUTEUR = 1080, 1920
 TAILLE_MAX_IMAGE = 8 * 1024 * 1024
 PALETTES = [
     ("#1b1035", "#e2583e"), ("#06283d", "#47b5ff"), ("#1a2e1a", "#e3b23c"),
@@ -22,13 +21,13 @@ PALETTES = [
 OPENAI = "https://api.openai.com/v1"
 
 
-def cadrer(image: Image.Image, largeur: int = LARGEUR, hauteur: int = HAUTEUR) -> Image.Image:
-    """Recadre en remplissant le format vertical, sans deformer."""
+def cadrer(image: Image.Image, largeur: int, hauteur: int) -> Image.Image:
+    """Recadre en remplissant le format demande, sans deformer."""
     return ImageOps.fit(image.convert("RGB"), (largeur, hauteur), Image.Resampling.LANCZOS)
 
 
 def image_utilisateur(data_url: str) -> bytes:
-    """Valide une image envoyee par le navigateur et la renvoie en PNG verticale."""
+    """Valide une image envoyee par le navigateur et la renvoie en PNG (2048 px max)."""
     if not data_url.startswith("data:image/") or ";base64," not in data_url:
         raise ValueError("Image invalide.")
     try:
@@ -42,35 +41,40 @@ def image_utilisateur(data_url: str) -> bytes:
         image.load()
     except Exception:
         raise ValueError("Image illisible.") from None
+    image = image.convert("RGB")
+    image.thumbnail((2048, 2048), Image.Resampling.LANCZOS)
     tampon = io.BytesIO()
-    cadrer(image).save(tampon, "PNG")
+    image.save(tampon, "PNG")
     return tampon.getvalue()
 
 
-def image_demo(texte: str, numero: int, chemin: Path) -> None:
+def image_demo(texte: str, numero: int, chemin: Path, largeur: int, hauteur: int) -> None:
     """Visuel abstrait local : un degrade et le numero du plan."""
     sombre, clair = PALETTES[(numero - 1) % len(PALETTES)]
     grand = Image.linear_gradient("L").resize((2800, 2800)).rotate(25 * numero)
-    degrade = grand.crop((860, 440, 860 + LARGEUR, 440 + HAUTEUR))
+    gauche, haut = (2800 - largeur) // 2, (2800 - hauteur) // 2
+    degrade = grand.crop((gauche, haut, gauche + largeur, haut + hauteur))
     image = ImageOps.colorize(degrade, sombre, clair)
     dessin = ImageDraw.Draw(image, "RGBA")
     for i in range(5):
         rayon = 140 + 90 * i
-        cx, cy = 200 + (numero * 173 + i * 211) % 700, 300 + (numero * 97 + i * 331) % 1100
+        cx = (numero * 173 + i * 211) % largeur
+        cy = (numero * 97 + i * 331) % hauteur
         dessin.ellipse((cx - rayon, cy - rayon, cx + rayon, cy + rayon), outline=(255, 255, 255, 38), width=4)
     dessin.text((80, 110), f"PLAN {numero:02d}", font=police(64), fill=(255, 255, 255, 220))
     dessin.text((80, 200), texte[:38], font=police(38), fill=(255, 255, 255, 150))
     image.save(chemin, "PNG")
 
 
-def image_openai(prompt: str, chemin: Path, cfg: Config) -> None:
+def image_openai(prompt: str, chemin: Path, cfg: Config, largeur: int, hauteur: int) -> None:
+    taille = "1024x1536" if largeur < hauteur else "1024x1024" if largeur == hauteur else "1536x1024"
     reponse = requete(
         "POST",
         f"{OPENAI}/images/generations",
         nom="OpenAI (image)",
         timeout=300.0,
         headers={"Authorization": f"Bearer {cfg.cle_openai}"},
-        json={"model": cfg.modele_image, "prompt": prompt[:3500], "size": "1024x1536", "n": 1},
+        json={"model": cfg.modele_image, "prompt": prompt[:3500], "size": taille, "n": 1},
     )
     try:
         donnee = reponse.json()["data"][0]
@@ -82,23 +86,25 @@ def image_openai(prompt: str, chemin: Path, cfg: Config) -> None:
         brut = requete("GET", donnee["url"], nom="OpenAI (image)").content
     else:
         raise ErreurFournisseur("Le modèle d'image n'a rien renvoyé.")
-    cadrer(Image.open(io.BytesIO(brut))).save(chemin, "PNG")
+    cadrer(Image.open(io.BytesIO(brut)), largeur, hauteur).save(chemin, "PNG")
 
 
 def clip_openai(prompt: str, chemin: Path, cfg: Config, reference: Path | None, secondes: int,
-                attente_max: float = 900.0, pause: float = 6.0) -> None:
+                paysage: bool = False, attente_max: float = 900.0, pause: float = 6.0) -> None:
     """Anime une scene avec le modele video (image de reference -> clip vertical)."""
     entete = {"Authorization": f"Bearer {cfg.cle_openai}"}
-    champs = {"model": cfg.modele_video, "prompt": prompt[:3500], "size": "720x1280", "seconds": str(secondes)}
+    cote = (1280, 720) if paysage else (720, 1280)
+    champs = {"model": cfg.modele_video, "prompt": prompt[:3500], "size": f"{cote[0]}x{cote[1]}",
+              "seconds": str(secondes)}
     fichiers = None
     if reference is not None:
         tampon = io.BytesIO()
-        cadrer(Image.open(reference), 720, 1280).save(tampon, "PNG")
+        cadrer(Image.open(reference), *cote).save(tampon, "PNG")
         fichiers = {"input_reference": ("reference.png", tampon.getvalue(), "image/png")}
     else:  # force l'encodage multipart meme sans fichier
         fichiers = {cle: (None, valeur) for cle, valeur in champs.items()}
         champs = {}
-    tache = requete("POST", f"{OPENAI}/videos", nom="OpenAI (vidéo)", headers=entete,
+    tache = requete("POST", f"{OPENAI}/videos", nom="OpenAI (vidéo)", headers=entete, essais=1,
                     data=champs or None, files=fichiers).json()
     identifiant = tache.get("id")
     if not identifiant:

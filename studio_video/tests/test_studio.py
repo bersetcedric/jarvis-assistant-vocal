@@ -9,7 +9,7 @@ from PIL import Image
 
 from studio import langues, montage, sous_titres
 from studio.config import charger
-from studio.scenario import Demande, generer_scenario, normaliser
+from studio.scenario import Demande, dimensions, generer_scenario, normaliser, plan_scenes
 from studio.visuels import image_utilisateur
 
 
@@ -32,9 +32,11 @@ def test_config_sans_cle_est_en_demo(tmp_path):
 
 
 def test_demande_bornee():
-    demande = Demande(idee="  un chat  astronaute ", format="serie", episodes=99, scenes=1,
-                      style="inconnu", moteur="autre").valider()
-    assert (demande.idee, demande.episodes, demande.scenes) == ("un chat astronaute", 6, 3)
+    demande = Demande(idee="  un chat  astronaute ", format="serie", episodes=99, duree=1,
+                      style="inconnu", moteur="autre", ratio="7:3", resolution="8k").valider()
+    assert (demande.idee, demande.episodes, demande.duree, demande.scenes) == ("un chat astronaute", 6, 15, 3)
+    assert (demande.ratio, demande.resolution) == ("9:16", "1080p")
+    assert Demande(idee="une idee", duree=99999).valider().duree == 3600
     assert (demande.style, demande.moteur) == ("cinematique", "images")
     assert Demande(idee="une idee", format="video", episodes=4).valider().episodes == 1
     with pytest.raises(ValueError):
@@ -42,14 +44,14 @@ def test_demande_bornee():
 
 
 def test_scenario_demo_respecte_le_format(tmp_path):
-    scenario = generer_scenario(Demande(idee="Un phare hante", format="serie", episodes=3, scenes=4).valider(),
+    scenario = generer_scenario(Demande(idee="Un phare hante", format="serie", episodes=3, duree=20).valider(),
                                 _cfg(tmp_path))
     assert [e["numero"] for e in scenario["episodes"]] == [1, 2, 3]
     assert all(len(e["scenes"]) == 4 for e in scenario["episodes"])
 
 
 def test_normaliser_tolere_une_reponse_bancale():
-    demande = Demande(idee="test", scenes=3).valider()
+    demande = Demande(idee="test", duree=15).valider()
     brut = {"episodes": [{"scenes": [{"narration": " Bonjour   le monde "}, {"narration": ""}, "x",
                                      {"narration": "a"}, {"narration": "b"}, {"narration": "c"}]},
                          {"scenes": [{"narration": "episode en trop"}]}]}
@@ -73,7 +75,7 @@ def test_image_utilisateur_validee_et_recadree():
     tampon = io.BytesIO()
     Image.new("RGB", (640, 480), "red").save(tampon, "JPEG")
     png = image_utilisateur("data:image/jpeg;base64," + base64.b64encode(tampon.getvalue()).decode())
-    assert Image.open(io.BytesIO(png)).size == (1080, 1920)
+    assert Image.open(io.BytesIO(png)).size == (640, 480)
     for invalide in ("http://exemple/img.png", "data:image/png;base64,@@@", "data:image/png;base64,AAAA"):
         with pytest.raises(ValueError):
             image_utilisateur(invalide)
@@ -103,7 +105,8 @@ def test_generation_demo_de_bout_en_bout(tmp_path):
 
     client = TestClient(creer_app(_cfg(tmp_path)))
     projet = client.post("/api/projets", json={"idee": "Un renard explore la ville la nuit", "format": "serie",
-                                               "episodes": 2, "scenes": 3, "moteur": "clips"}).json()
+                                               "episodes": 2, "duree": 15, "moteur": "clips",
+                                               "ratio": "16:9", "resolution": "720p"}).json()
     limite = time.time() + 240
     while projet["etat"] in ("en_attente", "en_cours") and time.time() < limite:
         time.sleep(0.5)
@@ -113,7 +116,13 @@ def test_generation_demo_de_bout_en_bout(tmp_path):
     assert any("Clips IA indisponibles" in a for a in projet["avertissements"])
     video = client.get(f"/api/projets/{projet['id']}/episodes/2/video")
     assert video.status_code == 200 and video.content[4:8] == b"ftyp"
-    assert all(e["duree"] > 7 for e in projet["episodes"])
+    assert all(12 < e["duree"] < 19 for e in projet["episodes"])
+    dossier = tmp_path / "projets" / projet["id"]
+    import subprocess
+    infos = subprocess.run([montage.ffmpeg(), "-hide_banner", "-i", str(dossier / "episode_02.mp4")],
+                           capture_output=True, text=True).stderr
+    assert "1280x720" in infos
+    assert sorted(f.name for f in dossier.iterdir()) == ["episode_01.mp4", "episode_02.mp4", "projet.json"]
     assert client.delete(f"/api/projets/{projet['id']}").json() == {"supprime": True}
     assert not (tmp_path / "projets" / projet["id"]).exists()
 
@@ -176,8 +185,57 @@ def test_api_transmet_langue_et_style(tmp_path):
     client = TestClient(creer_app(_cfg(tmp_path)))
     etat = client.get("/api/etat").json()
     assert "日本語" in etat["langues"] and "impact" in etat["polices"] and etat["couleurs"]["jaune"] == "#FFE600"
-    projet = client.post("/api/projets", json={"idee": "Un test de style", "langue": "español", "scenes": 3,
+    projet = client.post("/api/projets", json={"idee": "Un test de style", "langue": "español", "duree": 15,
                                                "st_couleur": "#39ff14", "st_police": "machine",
                                                "st_habillage": "ombre"}).json()
     assert projet["langue"] == "Español"
     assert projet["sous_titres"] == {"couleur": "#39FF14", "police": "machine", "habillage": "ombre"}
+
+
+def test_formats_resolutions_et_durees():
+    assert dimensions("9:16", "1080p") == (1080, 1920) and dimensions("16:9", "4k") == (3840, 2160)
+    assert dimensions("1:1", "720p") == (720, 720) and dimensions("4:5", "1440p") == (1440, 1800)
+    assert all(l % 2 == 0 and h % 2 == 0 for l, h in (dimensions(r, "720p") for r in ("21:9", "3:4", "4:3")))
+    assert plan_scenes(15) == (3, 12) and plan_scenes(3600) == (300, 30)
+    longue = Demande(idee="Une longue histoire", duree=3600).valider()
+    scenario = generer_scenario(longue, charger({}))
+    assert len(scenario["episodes"][0]["scenes"]) == 300
+    paysage, vertical = sous_titres.geometrie(1920, 1080), sous_titres.geometrie(1080, 1920)
+    assert vertical.y == 1172 and vertical.echelle == 1.0 and paysage.lettres_max > vertical.lettres_max
+    assert paysage.y + paysage.hauteur <= 1080 and paysage.largeur == 1920
+
+
+def test_scenario_long_ecrit_par_chapitres(tmp_path, monkeypatch):
+    from studio import scenario
+
+    appels = []
+
+    def faux_appel(cfg, consigne, contenu):
+        appels.append(contenu[0]["text"])
+        if '"chapitres"' in consigne:
+            return {"titre": "Titre", "style_visuel": "style", "episodes": [{"titre": "Unique", "chapitres": ["a", "b"]}]}
+        nombre = int(contenu[0]["text"].split("Ecris exactement ")[1].split()[0])
+        return {"scenes": [{"narration": f"scene {len(appels)}-{i}", "visuel": "v"} for i in range(nombre + 3)]}
+
+    monkeypatch.setattr(scenario, "_appel", faux_appel)
+    demande = Demande(idee="Une saga", duree=300).valider()  # 38 scenes -> 4 chapitres
+    etapes = []
+    resultat = scenario.generer_scenario(demande, _cfg(tmp_path, OPENAI_API_KEY="factice"), None,
+                                         lambda fait, total: etapes.append((fait, total)))
+    assert len(resultat["episodes"][0]["scenes"]) == demande.scenes == 38
+    assert len(appels) == 5 and etapes[-1] == (4, 4)
+    assert "Fin du chapitre precedent : scene 2-" in appels[2] and "dernier chapitre" in appels[-1]
+
+
+def test_requete_retente_les_pannes_passageres(monkeypatch):
+    import httpx
+
+    from studio import http
+
+    reponses = [httpx.Response(503), httpx.Response(429), httpx.Response(200, json={"ok": True})]
+    monkeypatch.setattr(http, "PAUSES", (0, 0, 0))
+    monkeypatch.setattr(httpx, "request", lambda *a, **k: reponses.pop(0))
+    assert http.requete("GET", "https://exemple.invalid", nom="Test").json() == {"ok": True}
+    monkeypatch.setattr(httpx, "request", lambda *a, **k: httpx.Response(401, json={"error": {"message": "cle"}}))
+    with pytest.raises(http.ErreurFournisseur, match="401"):
+        http.requete("GET", "https://exemple.invalid", nom="Test")

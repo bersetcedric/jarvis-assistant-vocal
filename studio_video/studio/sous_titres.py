@@ -9,7 +9,6 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont, features
 
-LARGEUR_BANDEAU, HAUTEUR_BANDEAU = 1080, 420
 W, M, L = "C:/Windows/Fonts/", "/System/Library/Fonts/", "/usr/share/fonts/"
 
 # Polices proposees a l'utilisateur : fichiers Windows, puis macOS, puis Linux.
@@ -201,29 +200,56 @@ def _contraste(couleur: tuple[int, int, int]) -> tuple[int, int, int]:
     return (0, 0, 0) if 0.299 * rouge + 0.587 * vert + 0.114 * bleu > 110 else (255, 255, 255)
 
 
-def rendre(texte: str, chemin: Path, style: Style = Style()) -> None:
+@dataclass(frozen=True)
+class Geometrie:
+    """Placement des sous-titres selon le format de la video."""
+    largeur: int
+    hauteur: int
+    echelle: float  # 1.0 pour une video verticale de 1080 px de large
+    y: int  # position verticale du bandeau dans la video
+    lettres_max: int
+    mots_max: int
+
+
+def geometrie(largeur: int, hauteur: int) -> Geometrie:
+    """En vertical, les sous-titres sont gros et centres bas ; en carre ou en
+    paysage, ils sont un peu plus petits, plus longs et places en bas."""
+    vertical = largeur < hauteur
+    echelle = min(largeur, hauteur) / 1080 * (1.0 if vertical else 0.78)
+    bande = 2 * round(420 * echelle / 2)
+    centre = hauteur * (0.72 if vertical else 0.84)
+    y = max(0, min(hauteur - bande, round(centre - bande / 2)))
+    large = largeur / hauteur > 1.5
+    return Geometrie(largeur, bande, echelle, y, 22 if vertical else 32 if large else 24,
+                     4 if vertical else 6 if large else 5)
+
+
+def rendre(texte: str, chemin: Path, style: Style = Style(), geo: Geometrie | None = None) -> None:
     """Ecrit un bandeau transparent avec le segment dans le style choisi."""
     style = style.valider()
+    geo = geo or geometrie(1080, 1920)
+    e = geo.echelle
+    LARGEUR_BANDEAU, HAUTEUR_BANDEAU = geo.largeur, geo.hauteur
     image = Image.new("RGBA", (LARGEUR_BANDEAU, HAUTEUR_BANDEAU), (0, 0, 0, 0))
     dessin = ImageDraw.Draw(image)
     brut = texte.upper()
     texte = preparer(brut)
     couleur = _rvb(style.couleur)
-    trait = {"contour": 8, "bandeau": 0, "ombre": 2}[style.habillage]
+    trait = round({"contour": 8, "bandeau": 0, "ombre": 2}[style.habillage] * e)
     centre = (LARGEUR_BANDEAU / 2, HAUTEUR_BANDEAU / 2)
-    taille = 92
+    taille, mini = round(92 * e), round(40 * e)
     while True:
         fonte = police(taille, style.police, brut)
         boite = dessin.textbbox(centre, texte, font=fonte, anchor="mm", stroke_width=trait)
-        if boite[2] - boite[0] <= LARGEUR_BANDEAU - 120 or taille <= 40:
+        if boite[2] - boite[0] <= LARGEUR_BANDEAU - 120 * e or taille <= mini:
             break
-        taille -= 6
+        taille -= max(1, round(6 * e))
     if style.habillage == "bandeau":
-        dessin.rounded_rectangle((boite[0] - 34, boite[1] - 22, boite[2] + 34, boite[3] + 22),
-                                 radius=26, fill=(*couleur, 255))
+        dessin.rounded_rectangle((boite[0] - 34 * e, boite[1] - 22 * e, boite[2] + 34 * e, boite[3] + 22 * e),
+                                 radius=26 * e, fill=(*couleur, 255))
         dessin.text(centre, texte, font=fonte, anchor="mm", fill=(*_contraste(couleur), 255))
     elif style.habillage == "ombre":
-        dessin.text((centre[0] + 7, centre[1] + 7), texte, font=fonte, anchor="mm", fill=(0, 0, 0, 215),
+        dessin.text((centre[0] + 7 * e, centre[1] + 7 * e), texte, font=fonte, anchor="mm", fill=(0, 0, 0, 215),
                     stroke_width=trait, stroke_fill=(0, 0, 0, 215))
         dessin.text(centre, texte, font=fonte, anchor="mm", fill=(*couleur, 255),
                     stroke_width=trait, stroke_fill=(*_contraste(couleur), 255))
