@@ -182,7 +182,7 @@ def scenario_demo(demande: Demande) -> dict:
         "Ce qui semblait impossible devient soudain évident.",
         "Et l'histoire ne fait que commencer.",
     ]
-    repetitions = max(1, round(demande.mots / 12))
+    repetitions = max(1, round(demande.mots / 10.5))
     episodes = []
     for numero in range(1, demande.episodes + 1):
         scenes = []
