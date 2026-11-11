@@ -9,7 +9,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageOps
 
-from .config import Config
+from .config import URL_OPENAI, Config
 from .http import ErreurFournisseur, requete
 from .sous_titres import police
 
@@ -68,13 +68,17 @@ def image_demo(texte: str, numero: int, chemin: Path, largeur: int, hauteur: int
 
 def image_openai(prompt: str, chemin: Path, cfg: Config, largeur: int, hauteur: int) -> None:
     taille = "1024x1536" if largeur < hauteur else "1024x1024" if largeur == hauteur else "1536x1024"
+    corps = {"model": cfg.modele_image, "prompt": prompt[:3500], "size": taille, "n": 1}
+    if cfg.url_images != URL_OPENAI:
+        # Agnes renvoie par defaut une adresse de telechargement ; on demande l'image elle-meme.
+        corps["response_format"] = "b64_json"
     reponse = requete(
         "POST",
         f"{cfg.url_images}/images/generations",
         nom="Modèle d'images",
         timeout=300.0,
         headers={"Authorization": f"Bearer {cfg.cle_images}"},
-        json={"model": cfg.modele_image, "prompt": prompt[:3500], "size": taille, "n": 1},
+        json=corps,
     )
     try:
         donnee = reponse.json()["data"][0]
