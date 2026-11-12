@@ -9,7 +9,6 @@ from functools import lru_cache
 from pathlib import Path
 
 IPS = 30
-Y_SOUS_TITRES = 1180
 
 
 class ErreurMontage(RuntimeError):
@@ -48,25 +47,31 @@ def duree_media(chemin: Path) -> float:
 
 
 def duree_estimee(narration: str) -> float:
-    """Duree de lecture quand il n'y a pas de voix (environ 2,6 mots par seconde)."""
-    return max(2.5, len(narration.split()) / 2.6)
+    """Duree de lecture sans voix : environ 2,6 mots par seconde, ou 5 signes par
+    seconde pour les ecritures sans espaces (chinois, japonais, thai...)."""
+    signes = len(narration.replace(" ", ""))
+    return max(2.5, len(narration.split()) / 2.6, signes / 5 if signes > 12 * len(narration.split()) else 0)
 
 
 def rendre_scene(sortie: Path, *, duree: float, image: Path | None = None, clip: Path | None = None,
                  audio: Path | None = None, sous_titres: list[tuple[Path, float, float]] = (),
-                 zoom_avant: bool = True) -> None:
-    """Produit une sequence 1080x1920 : visuel anime, voix et sous-titres incrustes."""
+                 zoom_avant: bool = True, largeur: int = 1080, hauteur: int = 1920,
+                 y_sous_titres: int = 1180) -> None:
+    """Produit une sequence au format demande : visuel anime, voix et sous-titres."""
+    marge = 1.5 if max(largeur, hauteur) <= 1920 else 1.25  # reserve de pixels pour le zoom
+    grand_l, grand_h = 2 * round(largeur * marge / 2), 2 * round(hauteur * marge / 2)
     images = max(1, round(duree * IPS))
     if clip is not None:
         entrees = ["-stream_loop", "-1", "-i", str(clip)]
-        filtre = (f"[0:v]scale=1080:1920:force_original_aspect_ratio=increase,"
-                  f"crop=1080:1920,fps={IPS},format=yuv420p[v0]")
+        filtre = (f"[0:v]scale={largeur}:{hauteur}:force_original_aspect_ratio=increase:flags=lanczos,"
+                  f"crop={largeur}:{hauteur},fps={IPS},format=yuv420p[v0]")
     elif image is not None:
         entrees = ["-i", str(image)]
         zoom = f"1+0.10*on/{images}" if zoom_avant else f"1.10-0.10*on/{images}"
-        filtre = (f"[0:v]scale=1620:2880:force_original_aspect_ratio=increase,crop=1620:2880,"
+        filtre = (f"[0:v]scale={grand_l}:{grand_h}:force_original_aspect_ratio=increase:flags=lanczos,"
+                  f"crop={grand_l}:{grand_h},"
                   f"zoompan=z='{zoom}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':"
-                  f"d={images}:s=1080x1920:fps={IPS},format=yuv420p[v0]")
+                  f"d={images}:s={largeur}x{hauteur}:fps={IPS},format=yuv420p[v0]")
     else:
         raise ErreurMontage("Scène sans visuel.")
     if audio is not None:
@@ -77,7 +82,7 @@ def rendre_scene(sortie: Path, *, duree: float, image: Path | None = None, clip:
     for indice, (png, debut, fin) in enumerate(sous_titres):
         entrees += ["-i", str(png)]
         suivante = f"v{indice + 1}"
-        filtre += (f";[{etiquette}][{indice + 2}:v]overlay=0:{Y_SOUS_TITRES}:"
+        filtre += (f";[{etiquette}][{indice + 2}:v]overlay=0:{y_sous_titres}:"
                    f"enable='between(t,{debut:.3f},{fin:.3f})'[{suivante}]")
         etiquette = suivante
     filtre += ";[1:a]aresample=44100,apad[a]"

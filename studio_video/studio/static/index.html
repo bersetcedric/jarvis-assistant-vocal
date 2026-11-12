@@ -6,49 +6,73 @@
 <title>Bobine — studio vidéo IA</title>
 <style>
   :root {
-    --fond: #14110f; --carte: #1f1a17; --trait: #3a302a; --texte: #f6efe6; --doux: #b3a596;
-    --accent: #ff7a45; --accent-fonce: #d9531f; --ok: #7bd389; --alerte: #f2c14e; --erreur: #ff6b6b;
+    --fond: #0b1020; --carte: #151c33; --creux: #0e1428; --trait: #2a3458; --texte: #f4f6ff; --doux: #a3acd0;
+    --a1: #ff5e7e; --a2: #ffb347; --menthe: #2ee6c5; --alerte: #ffd166; --erreur: #ff7b8a; --encre: #1d0a12;
+    --degrade: linear-gradient(100deg, var(--a1), var(--a2));
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--fond); color: var(--texte);
-         font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-  main { max-width: 1040px; margin: 0 auto; padding: 24px 16px 64px; }
-  header { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
-  .logo { width: 40px; height: 40px; border-radius: 50%; border: 4px solid var(--accent);
-          display: grid; place-items: center; }
-  .logo::after { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
-  header h1 { font-size: 24px; margin: 0; letter-spacing: .5px; }
+  body { margin: 0; color: var(--texte); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+         background: radial-gradient(900px 500px at 10% -10%, #2a1f5c55, transparent 70%),
+                     radial-gradient(800px 500px at 100% 0%, #0f5a6644, transparent 70%), var(--fond);
+         background-attachment: fixed; min-height: 100vh; }
+  main { max-width: 1080px; margin: 0 auto; padding: 24px 16px 64px; }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 26px; }
+  .logo { width: 42px; height: 42px; border-radius: 14px; background: var(--degrade); display: grid; place-items: center; }
+  .logo::after { content: ""; border-left: 14px solid var(--encre); border-top: 9px solid transparent;
+                 border-bottom: 9px solid transparent; margin-left: 4px; }
+  header h1 { font-size: 24px; margin: 0; }
   header span { color: var(--doux); font-size: 14px; }
   h2 { font-size: 30px; line-height: 1.15; margin: 0 0 8px; text-wrap: balance; }
-  h2 em { color: var(--accent); font-style: normal; }
-  .intro { color: var(--doux); margin: 0 0 20px; max-width: 60ch; }
-  .carte { background: var(--carte); border: 1px solid var(--trait); border-radius: 16px; padding: 18px; }
-  .bandeau { border-left: 4px solid var(--alerte); padding: 10px 14px; margin-bottom: 16px;
-             background: #2a2416; border-radius: 8px; font-size: 14px; }
-  label.titre, legend { display: block; font-weight: 600; font-size: 14px; margin: 16px 0 6px; padding: 0; }
-  fieldset { border: 0; padding: 0; margin: 0; }
-  textarea, select { width: 100%; background: var(--fond); color: var(--texte); border: 1px solid var(--trait);
-                     border-radius: 10px; padding: 12px; font: inherit; }
-  textarea { min-height: 96px; resize: vertical; }
-  textarea:focus, select:focus, button:focus-visible, .choix input:focus-visible + span {
-    outline: 2px solid var(--accent); outline-offset: 2px; }
+  h2 em { font-style: normal; background: var(--degrade); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .intro { color: var(--doux); margin: 0 0 20px; max-width: 58ch; }
+  .carte { background: var(--carte); border: 1px solid var(--trait); border-radius: 20px; padding: 18px; }
+  .bandeau { border-left: 4px solid var(--alerte); padding: 10px 14px; margin-bottom: 16px; background: #2b2714;
+             border-radius: 10px; font-size: 14px; }
+  .etape { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 16px; margin: 22px 0 10px; padding: 0; }
+  .etape:first-child { margin-top: 0; }
+  .etape b { width: 26px; height: 26px; border-radius: 50%; background: var(--degrade); color: var(--encre);
+             display: grid; place-items: center; font-size: 14px; flex: none; }
+  fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+  label.titre, .sous-legende { display: block; font-size: 13px; color: var(--doux); margin: 14px 0 6px; }
+  textarea, select, input[type="text"] { width: 100%; background: var(--creux); color: var(--texte);
+        border: 1px solid var(--trait); border-radius: 12px; padding: 12px; font: inherit; }
+  textarea { min-height: 92px; resize: vertical; }
+  textarea:focus, select:focus, input[type="text"]:focus, button:focus-visible, summary:focus-visible,
+  .choix input:focus-visible + span { outline: 2px solid var(--menthe); outline-offset: 2px; }
   .choix { display: flex; flex-wrap: wrap; gap: 8px; }
   .choix label { cursor: pointer; }
-  .choix input { position: absolute; opacity: 0; }
-  .choix span { display: block; padding: 9px 14px; border: 1px solid var(--trait); border-radius: 999px;
-                font-size: 14px; background: var(--fond); }
-  .choix input:checked + span { background: var(--accent); border-color: var(--accent); color: #1a0d05; font-weight: 600; }
+  .choix input[type="radio"] { position: absolute; opacity: 0; }
+  .choix span { display: flex; align-items: center; gap: 8px; padding: 9px 14px; border: 1px solid var(--trait);
+                border-radius: 999px; font-size: 14px; background: var(--creux); }
+  .choix input:checked + span { background: var(--degrade); border-color: transparent; color: var(--encre); font-weight: 700; }
   .choix input:disabled + span { opacity: .45; cursor: not-allowed; }
+  .formats { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
+  .formats span { flex-direction: column; border-radius: 16px; padding: 12px 6px 10px; text-align: center; gap: 6px;
+                  height: 100%; justify-content: flex-end; }
+  .formats i { display: block; border: 2px solid currentColor; border-radius: 4px; opacity: .9; }
+  .formats strong { font-size: 15px; }
+  .formats small { font-size: 11px; line-height: 1.25; opacity: .85; }
   .ligne { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .aide { color: var(--doux); font-size: 13px; margin: 6px 0 0; }
-  .image-zone { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-  .image-zone img { width: 54px; height: 96px; object-fit: cover; border-radius: 8px; border: 1px solid var(--trait); }
+  .aide.fort { color: var(--alerte); }
+  .image-zone { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+  .image-zone img { width: 54px; height: 54px; object-fit: cover; border-radius: 10px; border: 1px solid var(--trait); }
   button { font: inherit; cursor: pointer; border-radius: 999px; border: 1px solid var(--trait);
-           background: var(--fond); color: var(--texte); padding: 9px 16px; }
-  button.principal { width: 100%; margin-top: 20px; padding: 14px; font-size: 17px; font-weight: 700;
-                     background: var(--accent); border-color: var(--accent); color: #1a0d05; }
-  button.principal:hover { background: var(--accent-fonce); border-color: var(--accent-fonce); }
+           background: var(--creux); color: var(--texte); padding: 9px 16px; }
+  button.principal { width: 100%; margin-top: 22px; padding: 15px; font-size: 18px; font-weight: 800; border: 0;
+                     background: var(--degrade); color: var(--encre); box-shadow: 0 8px 28px #ff5e7e44; }
+  button.principal:hover { filter: brightness(1.08); }
   button:disabled { opacity: .5; cursor: wait; }
+  details.reglages { margin-top: 18px; border: 1px solid var(--trait); border-radius: 14px; padding: 4px 14px; background: var(--creux); }
+  details.reglages > summary { cursor: pointer; padding: 10px 0; font-weight: 600; }
+  details.reglages[open] { padding-bottom: 14px; }
+  .pastilles i { width: 16px; height: 16px; border-radius: 50%; border: 1px solid #0008; display: inline-block; }
+  .pastilles input[type="color"] { width: 44px; height: 38px; padding: 2px; border-radius: 10px;
+                                   border: 1px solid var(--trait); background: var(--creux); cursor: pointer; }
+  .apercu-st { margin-top: 14px; height: 110px; border-radius: 12px; display: grid; place-items: center;
+               background: linear-gradient(135deg, #2c3e66, #7a4b3a 60%, #c98a4b); overflow: hidden; }
+  .apercu-st span { font-size: 28px; font-weight: 800; text-transform: uppercase; padding: 6px 16px;
+                    border-radius: 10px; text-align: center; }
   .message { color: var(--erreur); font-size: 14px; min-height: 1.4em; margin: 10px 0 0; }
   h3 { margin: 36px 0 12px; font-size: 20px; }
   .vide { color: var(--doux); }
@@ -56,22 +80,23 @@
   .projet-tete { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
   .projet-tete h4 { margin: 0; font-size: 17px; overflow-wrap: anywhere; }
   .meta { color: var(--doux); font-size: 13px; margin: 2px 0 0; }
-  .barre { height: 8px; background: var(--fond); border-radius: 999px; overflow: hidden; margin: 12px 0 6px; }
-  .barre div { height: 100%; background: var(--accent); transition: width .4s; }
+  .barre { height: 10px; background: var(--creux); border-radius: 999px; overflow: hidden; margin: 12px 0 6px; }
+  .barre div { height: 100%; background: linear-gradient(90deg, var(--menthe), #6aa8ff); transition: width .4s; }
   .note { font-size: 13px; color: var(--alerte); margin: 8px 0 0; overflow-wrap: anywhere; }
   .note.erreur { color: var(--erreur); }
   .episodes { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; margin-top: 14px; }
-  .episode video, .episode .attente { width: 100%; aspect-ratio: 9 / 16; border-radius: 12px; background: #000;
+  .episodes.large { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+  .episode video, .episode .attente { width: 100%; border-radius: 12px; background: #000;
                                        border: 1px solid var(--trait); display: block; }
-  .episode .attente { display: grid; place-items: center; color: var(--doux); font-size: 13px; background: var(--fond); }
+  .episode .attente { display: grid; place-items: center; color: var(--doux); font-size: 13px; background: var(--creux); }
   .episode p { margin: 8px 0 4px; font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
-  .episode a { color: var(--accent); font-size: 13px; }
-  details { margin-top: 12px; font-size: 14px; }
-  summary { cursor: pointer; color: var(--doux); }
-  details ol { padding-left: 20px; margin: 8px 0; }
-  details li { margin-bottom: 6px; }
-  @media (min-width: 860px) {
-    .grille { display: grid; grid-template-columns: 420px 1fr; gap: 28px; align-items: start; }
+  .episode a { color: var(--a2); font-size: 13px; }
+  details.script { margin-top: 12px; font-size: 14px; }
+  details.script summary { cursor: pointer; color: var(--doux); }
+  details.script ol { padding-left: 20px; margin: 8px 0; max-height: 320px; overflow: auto; }
+  details.script li { margin-bottom: 6px; }
+  @media (min-width: 880px) {
+    .grille { display: grid; grid-template-columns: 460px 1fr; gap: 28px; align-items: start; }
     h3 { margin-top: 0; }
   }
   @media (prefers-reduced-motion: reduce) { .barre div { transition: none; } }
@@ -87,66 +112,88 @@
   <div class="grille">
     <section>
       <h2>Une idée, <em>une vidéo prête à publier.</em></h2>
-      <p class="intro">Écris une phrase ou dépose une image. Bobine écrit le script, crée les visuels,
-        la voix française, les sous-titres et monte le tout en vertical.</p>
-      <div id="demo" class="bandeau" hidden>Mode démo : aucune clé OpenAI détectée. Les vidéos utilisent un
-        script gabarit et des visuels abstraits. Ajoute tes clés dans <code>studio_video/.env</code>.</div>
+      <p class="intro">Trois choix suffisent : ton idée, où tu publies, la durée. Bobine s'occupe du script,
+        des images, de la voix, des sous-titres et du montage.</p>
+      <div id="demo" class="bandeau" hidden></div>
 
       <form id="formulaire" class="carte">
-        <fieldset>
-          <legend style="margin-top:0">Format</legend>
-          <div class="choix">
-            <label><input type="radio" name="format" value="video" checked><span>Vidéo unique</span></label>
-            <label><input type="radio" name="format" value="serie"><span>Mini-série</span></label>
-          </div>
-        </fieldset>
-
-        <label class="titre" for="idee">Ton idée</label>
+        <label class="etape" for="idee"><b>1</b>Ton idée</label>
         <textarea id="idee" maxlength="1500"
           placeholder="Ex. : l'histoire d'un gardien de phare qui reçoit des lettres venues du futur"></textarea>
-
-        <label class="titre" for="fichier">Image de départ (facultatif)</label>
         <div class="image-zone">
           <img id="apercu" alt="Aperçu de l'image choisie" hidden>
-          <button type="button" id="choisir">Choisir une image</button>
+          <button type="button" id="choisir">Ajouter une image de départ</button>
           <button type="button" id="retirer" hidden>Retirer</button>
           <input type="file" id="fichier" accept="image/png,image/jpeg,image/webp" hidden>
         </div>
-        <p class="aide">Elle devient la première scène et inspire le script.</p>
 
         <fieldset>
-          <legend>Style visuel</legend>
-          <div class="choix" id="styles"></div>
+          <legend class="etape"><b>2</b>Où vas-tu publier ?</legend>
+          <div class="choix formats" id="formats"></div>
         </fieldset>
 
         <fieldset>
-          <legend>Moteur vidéo</legend>
-          <div class="choix">
-            <label><input type="radio" name="moteur" value="images" checked><span>Images animées</span></label>
-            <label><input type="radio" name="moteur" value="clips" id="moteur-clips"><span>Clips IA</span></label>
+          <legend class="etape"><b>3</b>Durée et langue</legend>
+          <div class="ligne">
+            <div><label class="titre" for="duree" style="margin-top:0">Durée visée</label><select id="duree"></select></div>
+            <div><label class="titre" for="langue" style="margin-top:0">Langue</label>
+              <input type="text" id="langue" list="langues" value="Français" maxlength="40" autocomplete="off">
+              <datalist id="langues"></datalist></div>
           </div>
-          <p class="aide" id="aide-moteur">Images animées : rapide et économique. Clips IA : chaque scène est
-            animée par un modèle vidéo, plus lent et facturé à chaque clip.</p>
-        </fieldset>
-
-        <div class="ligne">
-          <div>
-            <label class="titre" for="scenes">Scènes par vidéo</label>
-            <select id="scenes"></select>
+          <p class="aide" id="estimation"></p>
+          <div class="choix" style="margin-top:12px">
+            <label><input type="radio" name="format" value="video" checked><span>Vidéo unique</span></label>
+            <label><input type="radio" name="format" value="serie"><span>Mini-série</span></label>
           </div>
           <div id="bloc-episodes" hidden>
-            <label class="titre" for="episodes">Épisodes</label>
+            <label class="titre" for="episodes">Nombre d'épisodes</label>
             <select id="episodes"></select>
           </div>
-        </div>
-
-        <fieldset>
-          <legend>Voix off</legend>
-          <div class="choix">
-            <label><input type="radio" name="voix" value="oui" checked><span>Avec voix</span></label>
-            <label><input type="radio" name="voix" value="non"><span>Sous-titres seuls</span></label>
-          </div>
         </fieldset>
+
+        <details class="reglages">
+          <summary>Plus de réglages (qualité, style, sous-titres, voix)</summary>
+
+          <label class="titre" for="resolution">Qualité de l'image</label>
+          <select id="resolution"></select>
+          <p class="aide" id="taille"></p>
+
+          <fieldset>
+            <legend class="sous-legende">Style visuel</legend>
+            <div class="choix" id="styles"></div>
+          </fieldset>
+
+          <fieldset>
+            <legend class="sous-legende">Couleur des sous-titres</legend>
+            <div class="choix pastilles" id="couleurs"></div>
+          </fieldset>
+          <fieldset>
+            <legend class="sous-legende">Police des sous-titres</legend>
+            <div class="choix" id="polices"></div>
+          </fieldset>
+          <fieldset>
+            <legend class="sous-legende">Habillage des sous-titres</legend>
+            <div class="choix" id="habillages"></div>
+          </fieldset>
+          <div class="apercu-st" aria-label="Aperçu du style de sous-titres"><span id="apercu-st">Ton sous-titre</span></div>
+
+          <fieldset>
+            <legend class="sous-legende">Moteur vidéo</legend>
+            <div class="choix">
+              <label><input type="radio" name="moteur" value="images" checked><span>Images animées</span></label>
+              <label><input type="radio" name="moteur" value="clips" id="moteur-clips"><span>Clips IA</span></label>
+            </div>
+            <p class="aide" id="aide-moteur"></p>
+          </fieldset>
+
+          <fieldset>
+            <legend class="sous-legende">Voix off</legend>
+            <div class="choix">
+              <label><input type="radio" name="voix" value="oui" checked><span>Avec voix</span></label>
+              <label><input type="radio" name="voix" value="non"><span>Sous-titres seuls</span></label>
+            </div>
+          </fieldset>
+        </details>
 
         <button class="principal" id="envoyer">Créer ma vidéo</button>
         <p class="message" id="message" role="alert"></p>
@@ -164,7 +211,21 @@
 const $ = (id) => document.getElementById(id);
 const NOMS_STYLES = { cinematique: "Cinématique", anime: "Anime", aquarelle: "Aquarelle", "3d": "3D animée",
                       sombre: "Sombre", documentaire: "Documentaire" };
-let image = null, minuterie = null, signature = "";
+const NOMS_FORMATS = { "9:16": "TikTok · Reels · Shorts", "16:9": "YouTube · Web", "1:1": "Instagram carré",
+                       "4:5": "Instagram portrait", "3:4": "Instagram 3:4", "4:3": "Classique", "21:9": "Cinéma" };
+const ORDRE_FORMATS = ["9:16", "16:9", "1:1", "4:5", "3:4", "4:3", "21:9"];
+const NOMS_RESOLUTIONS = { "720p": "HD 720p (léger, rapide)", "1080p": "Full HD 1080p (recommandé)",
+                           "1440p": "2K 1440p", "4k": "4K Ultra HD (rendu lent, fichier lourd)" };
+const COTES = { "720p": 720, "1080p": 1080, "1440p": 1440, "4k": 2160 };
+const NOMS_POLICES = { classique: "Classique", impact: "Impact", decontracte: "Décontractée", serif: "Serif",
+                       machine: "Machine à écrire" };
+const CSS_POLICES = { classique: "Arial, Helvetica, sans-serif", impact: 'Impact, "Arial Narrow", sans-serif',
+                      decontracte: '"Comic Sans MS", "Comic Sans", cursive', serif: "Georgia, serif",
+                      machine: '"Courier New", monospace' };
+const NOMS_COULEURS = { blanc: "Blanc", jaune: "Jaune", vert: "Vert néon", cyan: "Cyan", rose: "Rose",
+                        orange: "Orange", rouge: "Rouge" };
+const NOMS_HABILLAGES = { contour: "Contour", bandeau: "Bandeau plein", ombre: "Ombre portée" };
+let image = null, minuterie = null, signature = "", etat = null;
 
 function el(balise, attributs = {}, ...enfants) {
   const noeud = document.createElement(balise);
@@ -174,6 +235,18 @@ function el(balise, attributs = {}, ...enfants) {
   }
   noeud.append(...enfants);
   return noeud;
+}
+function choisi(nom) { return document.querySelector(`input[name="${nom}"]:checked`).value; }
+function nomDuree(s) {
+  if (s < 60) return `${s} secondes`;
+  if (s === 3600) return "1 heure";
+  const minutes = Math.floor(s / 60), reste = s % 60;
+  return reste ? `${minutes} min ${reste}` : `${minutes} minute${minutes > 1 ? "s" : ""}`;
+}
+function dimensions(ratio, resolution) {
+  const [a, b] = ratio.split(":").map(Number), petit = COTES[resolution] || 1080;
+  const pair = (x) => 2 * Math.round(x / 2);
+  return a < b ? [petit, pair(petit * b / a)] : [pair(petit * a / b), petit];
 }
 
 async function api(chemin, options) {
@@ -186,33 +259,83 @@ async function api(chemin, options) {
   return corps;
 }
 
-function options(select, min, max, defaut) {
-  for (let n = min; n <= max; n++) select.append(el("option", { value: n, texte: n }));
-  select.value = defaut;
+function radios(zone, nom, valeurs, contenu) {
+  valeurs.forEach((valeur, i) => {
+    const entree = el("input", { type: "radio", name: nom, value: valeur });
+    entree.checked = i === 0;
+    $(zone).append(el("label", {}, entree, el("span", {}, ...contenu(valeur))));
+  });
+}
+function couleurSousTitres() { return choisi("st_couleur") === "perso" ? $("couleur-perso").value : choisi("st_couleur"); }
+function contraste(hex) {
+  const [r, v, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  return 0.299 * r + 0.587 * v + 0.114 * b > 110 ? "#000" : "#fff";
+}
+function majApercu() {
+  const zone = $("apercu-st"), couleur = couleurSousTitres(), bord = contraste(couleur), habillage = choisi("st_habillage");
+  zone.style.fontFamily = CSS_POLICES[choisi("st_police")];
+  zone.style.background = habillage === "bandeau" ? couleur : "none";
+  zone.style.color = habillage === "bandeau" ? bord : couleur;
+  zone.style.textShadow = habillage === "contour"
+    ? [[-2, -2], [2, -2], [-2, 2], [2, 2], [0, 3], [3, 0], [0, -3], [-3, 0]].map(([x, y]) => `${x}px ${y}px 0 ${bord}`).join(",")
+    : habillage === "ombre" ? "4px 4px 0 #000c" : "none";
+}
+
+function majResume() {
+  const duree = Number($("duree").value), serie = choisi("format") === "serie";
+  const episodes = serie ? Number($("episodes").value) : 1, scenes = etat.durees[duree] * episodes;
+  $("bloc-episodes").hidden = !serie;
+  $("envoyer").textContent = serie ? "Créer ma mini-série" : "Créer ma vidéo";
+  let texte = serie ? `${episodes} épisodes d'environ ${nomDuree(duree)} : ` : "";
+  texte += `environ ${scenes} scènes` + (etat.images ? `, soit ${scenes} images et ${scenes} voix à générer.` : ".");
+  const longue = duree * episodes >= 600;
+  if (longue) texte += " Vidéo longue : la génération peut durer plus d'une heure" + (etat.images ? " et coûte cher en crédits API." : ".");
+  $("estimation").textContent = texte;
+  $("estimation").className = longue ? "aide fort" : "aide";
+  const clipsPossibles = etat.clips && duree <= etat.duree_max_clips;
+  $("moteur-clips").disabled = !clipsPossibles;
+  if (!clipsPossibles && choisi("moteur") === "clips") document.querySelector('input[name="moteur"][value="images"]').checked = true;
+  $("aide-moteur").textContent = !etat.clips ? "Les clips IA demandent une clé OpenAI."
+    : !clipsPossibles ? `Clips IA réservés aux vidéos de ${nomDuree(etat.duree_max_clips)} au plus.`
+    : "Images animées : rapide et économique. Clips IA : chaque scène est animée par un modèle vidéo, plus lent et facturé à chaque clip.";
+  const [largeur, hauteur] = dimensions(choisi("ratio"), $("resolution").value);
+  $("taille").textContent = `Fichier final : ${largeur} × ${hauteur} pixels, MP4.`;
 }
 
 async function initialiser() {
-  const etat = await api("/api/etat");
-  $("demo").hidden = !etat.demo;
-  if (!etat.clips) {
-    $("moteur-clips").disabled = true;
-    $("aide-moteur").textContent = "Les clips IA demandent une clé OpenAI. Images animées utilisées.";
-  }
-  etat.styles.forEach((style, i) => {
-    const entree = el("input", { type: "radio", name: "style", value: style });
-    entree.checked = i === 0;
-    $("styles").append(el("label", {}, entree, el("span", { texte: NOMS_STYLES[style] || style })));
+  etat = await api("/api/etat");
+  $("demo").hidden = !etat.demo && etat.images;
+  $("demo").textContent = etat.demo
+    ? "Mode démo : aucune clé détectée. Script gabarit et visuels abstraits. Ajoute tes clés dans studio_video/.env."
+    : "Script écrit par l'IA. Sans clé d'images, les visuels restent abstraits : ajoute AGNES_API_KEY ou OPENAI_API_KEY dans studio_video/.env.";
+  radios("formats", "ratio", ORDRE_FORMATS.filter((f) => etat.formats.includes(f)), (ratio) => {
+    const [a, b] = ratio.split(":").map(Number), cote = 30 / Math.max(a, b), forme = el("i");
+    forme.style.width = `${Math.round(a * cote)}px`; forme.style.height = `${Math.round(b * cote)}px`;
+    return [forme, el("strong", { texte: ratio }), el("small", { texte: NOMS_FORMATS[ratio] || "" })];
   });
-  options($("scenes"), etat.min_scenes, etat.max_scenes, 5);
-  options($("episodes"), 2, etat.max_episodes, 3);
-  rafraichir();
+  Object.keys(etat.durees).map(Number).sort((a, b) => a - b)
+    .forEach((d) => $("duree").append(el("option", { value: d, texte: nomDuree(d) })));
+  $("duree").value = 30;
+  for (let n = 2; n <= etat.max_episodes; n++) $("episodes").append(el("option", { value: n, texte: n }));
+  $("episodes").value = 3;
+  etat.langues.forEach((langue) => $("langues").append(el("option", { value: langue })));
+  etat.resolutions.forEach((r) => $("resolution").append(el("option", { value: r, texte: NOMS_RESOLUTIONS[r] || r })));
+  $("resolution").value = "1080p";
+  radios("styles", "style", etat.styles, (style) => [NOMS_STYLES[style] || style]);
+  radios("couleurs", "st_couleur", Object.values(etat.couleurs), (hex) => {
+    const pastille = el("i"); pastille.style.background = hex;
+    return [pastille, NOMS_COULEURS[Object.keys(etat.couleurs).find((nom) => etat.couleurs[nom] === hex)] || hex];
+  });
+  const perso = el("input", { type: "radio", name: "st_couleur", value: "perso" });
+  const palette = el("input", { type: "color", id: "couleur-perso", value: "#b388ff", "aria-label": "Couleur personnalisée" });
+  palette.addEventListener("input", () => { perso.checked = true; majApercu(); });
+  $("couleurs").append(el("label", {}, perso, el("span", { texte: "Autre" })), palette);
+  radios("polices", "st_police", etat.polices, (nom) => [NOMS_POLICES[nom] || nom]);
+  radios("habillages", "st_habillage", etat.habillages, (nom) => [NOMS_HABILLAGES[nom] || nom]);
+  document.querySelectorAll('input[name^="st_"]').forEach((entree) => entree.addEventListener("change", majApercu));
+  $("formulaire").addEventListener("change", majResume);
+  majApercu(); majResume(); rafraichir();
 }
-
-document.querySelectorAll('input[name="format"]').forEach((radio) => radio.addEventListener("change", () => {
-  const serie = radio.value === "serie" && radio.checked;
-  $("bloc-episodes").hidden = !serie;
-  $("envoyer").textContent = serie ? "Créer ma mini-série" : "Créer ma vidéo";
-}));
 
 $("choisir").addEventListener("click", () => $("fichier").click());
 $("retirer").addEventListener("click", () => {
@@ -232,16 +355,17 @@ $("fichier").addEventListener("change", () => {
 
 $("formulaire").addEventListener("submit", async (evenement) => {
   evenement.preventDefault();
-  const valeur = (nom) => document.querySelector(`input[name="${nom}"]:checked`).value;
   $("message").textContent = "";
   $("envoyer").disabled = true;
   try {
     await api("/api/projets", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        idee: $("idee").value, format: valeur("format"), episodes: Number($("episodes").value),
-        scenes: Number($("scenes").value), style: valeur("style"), moteur: valeur("moteur"),
-        voix: valeur("voix") === "oui", image,
+        idee: $("idee").value, format: choisi("format"), episodes: Number($("episodes").value),
+        duree: Number($("duree").value), ratio: choisi("ratio"), resolution: $("resolution").value,
+        style: choisi("style"), moteur: choisi("moteur"), voix: choisi("voix") === "oui", image,
+        langue: $("langue").value, st_couleur: couleurSousTitres(), st_police: choisi("st_police"),
+        st_habillage: choisi("st_habillage"),
       }),
     });
     $("idee").value = "";
@@ -256,12 +380,12 @@ $("formulaire").addEventListener("submit", async (evenement) => {
 
 function carteProjet(projet) {
   const actif = projet.etat === "en_attente" || projet.etat === "en_cours";
-  const nature = projet.format === "serie" ? "Mini-série" : "Vidéo";
-  const moteur = projet.moteur === "clips" ? "clips IA" : "images animées";
+  const ratio = projet.ratio || "9:16", [a, b] = ratio.split(":").map(Number);
+  const meta = [projet.format === "serie" ? "Mini-série" : "Vidéo", ratio, projet.resolution, projet.langue,
+                NOMS_STYLES[projet.style] || projet.style].filter(Boolean).join(" · ");
   const carte = el("article", { classe: "carte projet" });
   const tete = el("div", { classe: "projet-tete" },
-    el("div", {}, el("h4", { texte: projet.titre }),
-      el("p", { classe: "meta", texte: `${nature} · ${NOMS_STYLES[projet.style] || projet.style} · ${moteur}` })));
+    el("div", {}, el("h4", { texte: projet.titre }), el("p", { classe: "meta", texte: meta })));
   if (!actif) {
     const bouton = el("button", { type: "button", texte: "Supprimer", "aria-label": `Supprimer ${projet.titre}` });
     bouton.addEventListener("click", async () => {
@@ -283,22 +407,24 @@ function carteProjet(projet) {
   projet.avertissements.forEach((texte) => carte.append(el("p", { classe: "note", texte })));
 
   if (projet.episodes.length) {
-    const grille = el("div", { classe: "episodes" });
+    const grille = el("div", { classe: a >= b ? "episodes large" : "episodes" });
     for (const episode of projet.episodes) {
       const source = `/api/projets/${projet.id}/episodes/${episode.numero}/video`;
       const bloc = el("div", { classe: "episode" });
+      let cadre;
       if (episode.pret) {
-        bloc.append(el("video", { src: source + "#t=0.1", controls: "", preload: "metadata", playsinline: "" }),
-                    el("p", { texte: episode.titre }),
-                    el("a", { href: source + "?telecharger=true", texte: `Télécharger (${episode.duree} s)` }));
+        cadre = el("video", { src: source + "#t=0.1", controls: "", preload: "metadata", playsinline: "" });
+        bloc.append(cadre, el("p", { texte: episode.titre }),
+                    el("a", { href: source + "?telecharger=true", texte: `Télécharger (${nomDuree(Math.round(episode.duree))})` }));
       } else {
-        bloc.append(el("div", { classe: "attente", texte: actif ? "En préparation…" : "Non généré" }),
-                    el("p", { texte: episode.titre }));
+        cadre = el("div", { classe: "attente", texte: actif ? "En préparation…" : "Non généré" });
+        bloc.append(cadre, el("p", { texte: episode.titre }));
       }
+      cadre.style.aspectRatio = `${a} / ${b}`;
       grille.append(bloc);
     }
     carte.append(grille);
-    const script = el("details", {}, el("summary", { texte: "Voir le script" }));
+    const script = el("details", { classe: "script" }, el("summary", { texte: "Voir le script" }));
     for (const episode of projet.episodes) {
       if (projet.episodes.length > 1) script.append(el("strong", { texte: episode.titre }));
       script.append(el("ol", {}, ...episode.scenes.map((scene) => el("li", { texte: scene.narration }))));
@@ -316,11 +442,10 @@ async function rafraichir() {
   const lecture = [...document.querySelectorAll("video")].some((video) => !video.paused && !video.ended);
   if (nouvelle !== signature && !lecture) {  // ne redessine jamais pendant une lecture
     signature = nouvelle;
-    const zone = $("projets");
-    zone.replaceChildren(...(projets.length ? projets.map(carteProjet)
+    $("projets").replaceChildren(...(projets.length ? projets.map(carteProjet)
       : [el("p", { classe: "vide", texte: "Tes vidéos apparaîtront ici." })]));
   }
-  if (projets.some((p) => p.etat === "en_attente" || p.etat === "en_cours")) minuterie = setTimeout(rafraichir, 1500);
+  if (projets.some((p) => p.etat === "en_attente" || p.etat === "en_cours")) minuterie = setTimeout(rafraichir, 2000);
 }
 
 initialiser();

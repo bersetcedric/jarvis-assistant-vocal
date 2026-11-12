@@ -23,12 +23,12 @@ def _voix_elevenlabs(cfg: Config) -> str:
     return _voix_par_defaut[cfg.cle_elevenlabs]
 
 
-def synthetiser(texte: str, chemin: Path, cfg: Config) -> bool:
+def synthetiser(texte: str, chemin: Path, cfg: Config, code_langue: str | None = "fr") -> bool:
     """Ecrit la narration en MP3. Renvoie False si aucun fournisseur de voix."""
     if cfg.cle_elevenlabs:
         corps = {"text": texte, "model_id": cfg.modele_voix_elevenlabs}
-        if "v2_5" in cfg.modele_voix_elevenlabs:
-            corps["language_code"] = "fr"
+        if "v2_5" in cfg.modele_voix_elevenlabs and code_langue:
+            corps["language_code"] = code_langue
         audio = requete(
             "POST", f"{ELEVENLABS}/text-to-speech/{_voix_elevenlabs(cfg)}", nom="ElevenLabs",
             params={"output_format": "mp3_44100_128"},

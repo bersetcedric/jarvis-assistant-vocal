@@ -10,23 +10,34 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
+from . import langues
 from .config import Config, charger
-from .scenario import MAX_EPISODES, MAX_SCENES, MIN_SCENES, STYLES, Demande
+from .scenario import (DUREE_MAX, DUREE_MAX_CLIPS, DUREE_MIN, FORMATS, MAX_EPISODES, RESOLUTIONS, STYLES,
+                       Demande, plan_scenes)
+from .sous_titres import COULEURS, FAMILLES, HABILLAGES, Style
 from .taches import ID_VALIDE, Gestionnaire
 from .visuels import image_utilisateur
 
 STATIQUE = Path(__file__).resolve().parent / "static"
+# Durees proposees dans l'interface, en secondes (de 15 s a 1 h).
+DUREES = (15, 30, 45, 60, 90, 120, 180, 300, 600, 900, 1200, 1800, 2700, 3600)
 
 
 class NouveauProjet(BaseModel):
     idee: str = Field(default="", max_length=1500)
     format: str = "video"
     episodes: int = Field(default=3, ge=1, le=MAX_EPISODES)
-    scenes: int = Field(default=5, ge=MIN_SCENES, le=MAX_SCENES)
+    duree: int = Field(default=30, ge=DUREE_MIN, le=DUREE_MAX)
+    ratio: str = Field(default="9:16", max_length=8)
+    resolution: str = Field(default="1080p", max_length=8)
     style: str = "cinematique"
     moteur: str = "images"
     voix: bool = True
     image: str | None = Field(default=None, max_length=12_000_000)
+    langue: str = Field(default="Français", max_length=60)
+    st_couleur: str = Field(default="#FFFFFF", max_length=20)
+    st_police: str = Field(default="classique", max_length=20)
+    st_habillage: str = Field(default="contour", max_length=20)
 
 
 def creer_app(cfg: Config | None = None) -> FastAPI:
@@ -46,8 +57,11 @@ def creer_app(cfg: Config | None = None) -> FastAPI:
     @app.get("/api/etat")
     def etat():
         voix = "elevenlabs" if cfg.cle_elevenlabs else "openai" if cfg.cle_openai else "aucune"
-        return {"demo": cfg.demo, "clips": not cfg.demo, "voix": voix, "styles": list(STYLES),
-                "max_episodes": MAX_EPISODES, "min_scenes": MIN_SCENES, "max_scenes": MAX_SCENES}
+        return {"demo": cfg.demo, "images": cfg.images_ia, "clips": cfg.clips_ia, "voix": voix, "styles": list(STYLES),
+                "langues": list(langues.LANGUES), "couleurs": COULEURS, "polices": list(FAMILLES),
+                "habillages": list(HABILLAGES),
+                "max_episodes": MAX_EPISODES, "formats": list(FORMATS), "resolutions": list(RESOLUTIONS),
+                "durees": {str(d): plan_scenes(d)[0] for d in DUREES}, "duree_max_clips": DUREE_MAX_CLIPS}
 
     @app.get("/api/projets")
     def projets():
@@ -58,8 +72,10 @@ def creer_app(cfg: Config | None = None) -> FastAPI:
         try:
             image = image_utilisateur(corps.image) if corps.image else None
             return gestionnaire.creer(Demande(
-                idee=corps.idee, format=corps.format, episodes=corps.episodes, scenes=corps.scenes,
-                style=corps.style, moteur=corps.moteur, voix=corps.voix, image=image))
+                idee=corps.idee, format=corps.format, episodes=corps.episodes, duree=corps.duree,
+                ratio=corps.ratio, resolution=corps.resolution,
+                style=corps.style, moteur=corps.moteur, voix=corps.voix, image=image, langue=corps.langue,
+                sous_titres=Style(corps.st_couleur, corps.st_police, corps.st_habillage)))
         except ValueError as exc:
             raise HTTPException(422, str(exc)) from None
 
